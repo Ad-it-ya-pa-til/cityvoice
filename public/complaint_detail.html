@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CityVoice • Complaint Details</title>
+  <link rel="stylesheet" href="/index.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="complaint">
+  <header class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <span class="logo">✴</span>
+        <a class="brand-name" href="/" style="color:#dff1ff;text-decoration:none">CityVoice</a>
+      </div>
+      <nav class="menu">
+        <a class="menu-link" href="/dashboard.html">Dashboard</a>
+        <a class="menu-link" href="/index.html#about">About</a>
+        <a class="menu-link" href="/index.html#contact">Contact</a>
+      </nav>
+      <div class="actions">
+        <a class="btn btn-outline" href="/complaint.html">New Complaint</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page">
+    <h1 class="page-title" id="title">Complaint Details</h1>
+
+    <div class="panel" id="meta">
+      <h3>Summary</h3>
+      <div class="row">
+        <div class="field"><label>Complaint ID<input id="cid" readonly></label></div>
+        <div class="field"><label>Category<input id="category" readonly></label></div>
+        <div class="field"><label>Status<input id="status" readonly></label></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Submitted At<input id="created" readonly></label></div>
+        <div class="field"><label>Reporter<input id="user" readonly></label></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Description</h3>
+      <p id="description" class="muted"></p>
+    </div>
+
+    <div class="panel">
+      <h3>Location</h3>
+      <div class="row">
+        <div class="field"><label>Address / Landmark<input id="location" readonly></label></div>
+        <div class="field"><label>Latitude<input id="lat" readonly></label></div>
+        <div class="field"><label>Longitude<input id="lng" readonly></label></div>
+      </div>
+      <p><a id="maplink" href="#" target="_blank">Open in Maps</a></p>
+    </div>
+
+    <div class="panel">
+      <h3>Evidence</h3>
+      <div id="evidence"></div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    const token = localStorage.getItem('cv_token');
+    if (!id) { alert('Missing complaint id'); location.href = '/dashboard.html'; }
+
+    fetch(`/api/complaints/${id}`, { headers: token ? { 'x-auth-token': token } : {} })
+      .then(r => r.json())
+      .then(c => {
+        if (!c || c.error) throw new Error(c.error || 'not found');
+        document.getElementById('title').textContent = c.title || 'Complaint Details';
+        document.getElementById('cid').value = typeof c.id === 'number' ? `CV-${new Date(c.createdAt || Date.now()).getFullYear()}-${String(c.id).padStart(3,'0')}` : c.id;
+        document.getElementById('category').value = c.category || '';
+        document.getElementById('status').value = c.status || '';
+        document.getElementById('created').value = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
+        document.getElementById('user').value = c.userEmail || '';
+        document.getElementById('description').textContent = c.description || '';
+        document.getElementById('location').value = c.location || '';
+        document.getElementById('lat').value = c.coords && c.coords.lat ? c.coords.lat : '';
+        document.getElementById('lng').value = c.coords && c.coords.lng ? c.coords.lng : '';
+        const mapA = document.getElementById('maplink');
+        if (c.coords && c.coords.lat && c.coords.lng) {
+          mapA.href = `https://www.google.com/maps?q=${c.coords.lat},${c.coords.lng}`;
+        } else if (c.location) {
+          mapA.href = `https://www.google.com/maps/search/${encodeURIComponent(c.location)}`;
+        } else { mapA.remove(); }
+
+        const ev = document.getElementById('evidence');
+        if (c.evidenceUrl) {
+          if (/\.mp4|\.webm|\.ogg$/i.test(c.evidenceUrl)) {
+            ev.innerHTML = `<video src="${c.evidenceUrl}" controls style="max-width:100%;border-radius:12px"></video>`;
+          } else {
+            ev.innerHTML = `<img src="${c.evidenceUrl}" alt="Evidence" style="max-width:100%;border-radius:12px"/>`;
+          }
+        } else {
+          ev.innerHTML = '<span class="muted">No evidence uploaded.</span>';
+        }
+      })
+      .catch(() => { alert('Complaint not found'); location.href = '/dashboard.html'; });
+  </script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CityVoice • Lodge a Complaint</title>
+  <link rel="stylesheet" href="/index.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .page{max-width:900px;margin:24px auto;padding:0 16px}
+    .page-title{font-size:36px;font-weight:800;text-align:center;margin:10px 0 20px}
+    .panel{background:#fff;border:1px solid #e6eef5;border-radius:16px;padding:16px;color:#0b2237}
+    .panel h3{margin:0 0 10px;font-size:22px}
+    .panel + .panel{margin-top:18px}
+    .map{border-radius:14px;overflow:hidden;border:1px solid #dbe6f1;margin-bottom:12px}
+    .map img{width:100%;display:block}
+    .row{display:flex;gap:10px}
+    .row > *{flex:1}
+    .btn-soft{width:100%;background:#f2f6fb;border:1px solid #d9e5f0;border-radius:10px;padding:12px;cursor:pointer;font-weight:700;color:#0b2237;display:flex;align-items:center;justify-content:center;gap:8px}
+    .field{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+    .field input,.field select,.field textarea{background:#fff;border:1px solid #d8e5f0;border-radius:10px;padding:10px}
+    .submit{margin:22px 0}
+    .submit button{width:100%;background:#0a74b8;color:#fff;border:1px solid #0a74b8;border-radius:10px;padding:14px;font-weight:800;cursor:pointer}
+    .muted{color:#5b6b7a}
+  </style>
+</head>
+<body style="background:#f7fbff">
+  <header class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <span class="logo">✴</span>
+        <a class="brand-name" href="/" style="color:#dff1ff;text-decoration:none">CityVoice</a>
+      </div>
+      <nav class="menu">
+        <a class="menu-link" href="/">Home</a>
+        <a class="menu-link" href="/index.html#about">About</a>
+        <a class="menu-link" href="/index.html#contact">Contact</a>
+      </nav>
+      <div class="actions">
+        <button id="btn-auth" class="btn btn-ghost"><span>⎆</span><span>Login / Sign Up</span></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="page">
+    <h1 class="page-title">Lodge a New Complaint</h1>
+
+    <form id="complaint-form">
+      <div class="panel">
+        <h3>1. Location Details</h3>
+        <button id="btn-geoloc" type="button" class="btn-soft">📍 Use My Current Location</button>
+        <div class="row">
+          <div class="field">
+            <label>Location (address or landmark)<input id="location" type="text" placeholder="e.g., Sector 17, Chandigarh"/></label>
+          </div>
+          <div class="field">
+            <label>Latitude<input id="lat" type="text" placeholder="auto"/></label>
+          </div>
+          <div class="field">
+            <label>Longitude<input id="lng" type="text" placeholder="auto"/></label>
+          </div>
+        </div>
+        <p class="muted">Tip: If you allow location access, coordinates will auto-fill.</p>
+      </div>
+
+      <div class="panel">
+        <h3>2. Complaint Details</h3>
+        <div class="row">
+          <div class="field">
+            <label>Complaint Category
+              <select id="category">
+                <option value="">Select a category</option>
+                <option value="Roads">Roads</option>
+                <option value="Streetlight">Streetlight</option>
+                <option value="Water">Water</option>
+                <option value="Sanitation">Sanitation</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+          </div>
+          <div class="field">
+            <label>Title<input id="title" type="text" placeholder="Short headline" required/></label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Description
+            <textarea id="description" rows="5" placeholder="Provide a detailed description..." required></textarea>
+          </label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>3. Upload Evidence (Optional)</h3>
+        <div class="row">
+          <div class="field">
+            <label>Photo / Video
+              <input id="evidence" type="file" accept="image/*,video/*" />
+            </label>
+          </div>
+        </div>
+        <p class="muted">Evidence helps authorities validate and resolve issues faster.</p>
+      </div>
+
+      <div class="submit"><button type="submit">Submit Complaint ✈</button></div>
+    </form>
+  </div>
+
+  <script>
+    const storage = { 
+      get token(){ return localStorage.getItem('cv_token'); },
+      clear(){ localStorage.removeItem('cv_token'); }
+    };
+    const authBtn = document.getElementById('btn-auth');
+    function updateAuthUI(){ authBtn.innerHTML = storage.token ? '<span>⎋</span><span>Logout</span>' : '<span>⎆</span><span>Login / Sign Up</span>'; }
+    authBtn.addEventListener('click', () => {
+      if (storage.token){ storage.clear(); updateAuthUI(); }
+      else { window.location.href = '/'; }
+    });
+    updateAuthUI();
+
+    // Geolocation
+    document.getElementById('btn-geoloc').addEventListener('click', () => {
+      if (!navigator.geolocation) return alert('Geolocation not supported');
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const { latitude, longitude } = pos.coords;
+        document.getElementById('lat').value = latitude.toFixed(6);
+        document.getElementById('lng').value = longitude.toFixed(6);
+      }, () => alert('Unable to fetch location'));
+    });
+
+    // Submit
+    document.getElementById('complaint-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!storage.token) return window.location.href = '/';
+
+      const file = document.getElementById('evidence').files[0];
+      const common = {
+        title: document.getElementById('title').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        location: document.getElementById('location').value.trim(),
+        category: document.getElementById('category').value,
+        lat: document.getElementById('lat').value.trim(),
+        lng: document.getElementById('lng').value.trim(),
+      };
+
+      try{
+        let res, data;
+        if (file){
+          const fd = new FormData();
+          Object.entries(common).forEach(([k,v]) => { if (v) fd.append(k, v); });
+          fd.append('evidence', file);
+          res = await fetch('/api/complaints', { method:'POST', headers: { 'x-auth-token': storage.token }, body: fd });
+        } else {
+          res = await fetch('/api/complaints', { method:'POST', headers: { 'x-auth-token': storage.token, 'Content-Type':'application/json' }, body: JSON.stringify(common) });
+        }
+        data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+        alert('Complaint submitted');
+        window.location.href = '/';
+      }catch(err){
+        alert(err.message);
+        if (String(err.message).toLowerCase().includes('auth')) window.location.href = '/';
+      }
+    });
+  </script>
+</body>
+</html>

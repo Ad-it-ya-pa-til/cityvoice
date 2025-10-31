@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CityVoice • My Complaints</title>
+  <link rel="stylesheet" href="/index.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard">
+  <header class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <span class="logo">✴</span>
+        <a class="brand-name" href="/" style="color:#dff1ff;text-decoration:none">CityVoice</a>
+      </div>
+      <nav class="menu">
+        <a class="menu-link" href="/">Home</a>
+        <a class="menu-link" href="/index.html#about">About</a>
+        <a class="menu-link" href="/index.html#contact">Contact</a>
+      </nav>
+      <div class="actions">
+        <a class="btn btn-primary" href="/complaint.html">Log a Complaint</a>
+        <button class="menu-link" id="logout-link" type="button" style="background:none;border:0;cursor:pointer">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="dash-wrap">
+    <!-- Tabs -->
+    <div class="dash-tabs container">
+      <a class="dash-tab" href="#" data-tab="profile">👤 <span>Profile</span></a>
+      <a class="dash-tab active" href="#" data-tab="my">📋 <span>My Complaints</span></a>
+      <a class="dash-tab" href="/complaint.html" data-tab="new">✏️ <span>New Complaint</span></a>
+      <a class="dash-tab" href="#" data-tab="notifications">🔔 <span>Notifications</span></a>
+    </div>
+
+    <!-- Card -->
+    <section class="container dash-card" id="view-my">
+      <h2>My Complaints</h2>
+      <p class="muted">Overview of your submitted civic complaints. Click on a row for details.</p>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Complaint ID</th>
+              <th>Category</th>
+              <th>Date</th>
+              <th class="right">Status</th>
+            </tr>
+          </thead>
+          <tbody id="complaints-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="dash-footer container">
+    <div class="links">
+      <a href="/index.html#about">About</a>
+      <a href="#">Resources</a>
+      <a href="/index.html#contact">Contact Us</a>
+    </div>
+    <div class="social">
+      <a href="#" aria-label="Facebook">📘</a>
+      <a href="#" aria-label="Twitter">🐦</a>
+      <a href="#" aria-label="LinkedIn">💼</a>
+    </div>
+  </footer>
+
+  <script>
+    const demoComplaints = [
+      { id: 1, category: "Roads", createdAt: "2024-07-20T00:00:00.000Z", status: "Resolved" },
+      { id: 2, category: "Sanitation", createdAt: "2024-07-18T00:00:00.000Z", status: "In-Progress" },
+      { id: 3, category: "Street Lights", createdAt: "2024-07-15T00:00:00.000Z", status: "Submitted" },
+      { id: 4, category: "Water", createdAt: "2024-07-12T00:00:00.000Z", status: "Resolved" },
+      { id: 5, category: "Others", createdAt: "2024-07-10T00:00:00.000Z", status: "In-Progress" },
+      { id: 6, category: "Garbage", createdAt: "2024-07-08T00:00:00.000Z", status: "Resolved" }
+    ];
+
+    function statusBadge(status){
+      const cls = status === 'Resolved' ? 'badge-success' : status === 'In-Progress' ? 'badge-info' : 'badge-neutral';
+      return `<span class="badge ${cls}">${status}</span>`;
+    }
+
+    function displayId(id){
+      return `CV-${new Date().getFullYear()}-${String(id).padStart(3,'0')}`;
+    }
+
+    function renderTable(rows){
+      const tbody = document.getElementById('complaints-body');
+      tbody.innerHTML = rows.map(c => {
+        const date = (c.createdAt || c.date);
+        const dateStr = date ? new Date(date).toISOString().slice(0,10) : '';
+        const idDisp = typeof c.id === 'number' ? displayId(c.id) : c.id;
+        return `
+          <tr class="row-item" data-id="${c.id}">
+            <td>${idDisp}</td>
+            <td>${c.category || c.title || '—'}</td>
+            <td class="muted">${dateStr}</td>
+            <td class="right">${statusBadge(c.status || 'Submitted')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.row-item').forEach(tr => tr.addEventListener('click', () => {
+        const id = tr.getAttribute('data-id');
+        window.location.href = `/complaint_detail.html?id=${id}`;
+      }));
+    }
+
+    // Tabs activate
+    const TAB_KEY = 'cv_tab';
+    function setActiveTab(el){
+      document.querySelectorAll('.dash-tab').forEach(x => x.classList.remove('active'));
+      el.classList.add('active');
+      const label = el.dataset.tab;
+      localStorage.setItem(TAB_KEY, label);
+      if (el.getAttribute('href') === '#') history.replaceState({}, '', `#${label}`);
+    }
+    document.querySelectorAll('.dash-tab').forEach(t => t.addEventListener('click', (e) => {
+      const isAnchor = t.getAttribute('href');
+      if (isAnchor === '#') e.preventDefault();
+      setActiveTab(t);
+    }));
+    const initial = location.hash.replace('#','') || localStorage.getItem(TAB_KEY) || 'my';
+    const initialEl = document.querySelector(`.dash-tab[data-tab="${initial}"]`) || document.querySelector('.dash-tab.active');
+    if (initialEl) setActiveTab(initialEl);
+
+    // Logout button clears token
+    const out = document.getElementById('logout-link');
+    out.addEventListener('click', () => { localStorage.removeItem('cv_token'); location.href = '/'; });
+
+    // Load from backend
+    const token = localStorage.getItem('cv_token');
+    if (!token) {
+      window.location.href = '/';
+    } else {
+      Promise.all([
+        fetch('/api/users/me', { headers: { 'x-auth-token': token } }),
+        fetch('/api/complaints?mine=1', { headers: { 'x-auth-token': token } }),
+      ]).then(async ([uRes, cRes]) => {
+        if (!uRes.ok) throw new Error('unauthorized');
+        const rows = (await cRes.json()).map(c => c);
+        renderTable(Array.isArray(rows) && rows.length ? rows : demoComplaints);
+      }).catch(() => {
+        // fallback to demo
+        renderTable(demoComplaints);
+      });
+    }
+  </script>
+</body>
+</html>

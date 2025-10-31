@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CityVoice</title>
+  <link rel="stylesheet" href="/index.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <span class="logo">✴</span>
+        <span class="brand-name">CityVoice</span>
+      </div>
+      <nav class="menu">
+        <a class="menu-link active" href="#home">Home</a>
+        <a class="menu-link" href="#about">About</a>
+        <a class="menu-link" href="#contact">Contact</a>
+      </nav>
+      <div class="actions">
+        <a class="btn btn-ghost" href="/track.html">Track Complaint</a>
+        <button id="btn-auth-link" class="btn" type="button" title="Login / Sign Up">
+          <span>⎆</span>
+          <span>Login / Sign Up</span>
+        </button>
+        <div class="menu-user" id="menu-user" style="display:none">
+          <button class="menu-btn" id="btn-user" aria-haspopup="menu" aria-expanded="false">🙂</button>
+          <div class="dropdown" id="dropdown-user" role="menu" aria-hidden="true">
+            <a href="/dashboard.html" class="drop-item">Profile</a>
+            <button class="drop-item" id="drop-logout">Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="home" class="hero">
+      <div class="overlay"></div>
+      <div class="container hero-content">
+        <h1>Your Voice, Your City, Your Impact.</h1>
+        <p>CivicVoice empowers citizens to report and track civic complaints, driving transparency and accountability in local governance. Make a difference today.</p>
+        <button id="btn-hero-complaint" class="btn btn-primary">Log a Complaint</button>
+      </div>
+    </section>
+
+  
+
+    <!-- How it works -->
+    <section class="container section-gap">
+      <h2 class="section-title">How CityVoice Works</h2>
+      <p class="section-subtitle">Discover the simple process of making your voice heard and contributing to community improvement.</p>
+      <div class="features">
+        <div class="feature-card">
+          <div class="feature-icon">📝</div>
+          <h3>Log Your Complaint</h3>
+          <p>Easily submit detailed reports about civic issues, including location and descriptions, through our intuitive form.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔎</div>
+          <h3>Track Progress</h3>
+          <p>Stay informed with updates on your complaint's status from submission to resolution, ensuring transparency.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✅</div>
+          <h3>See Results</h3>
+          <p>Witness positive changes in your community as reported issues are addressed and resolved by local authorities.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="container grid two-col section-gap" id="about">
+      <div>
+        <h2>About</h2>
+        <p>CityVoice is a simple, transparent way to report civic issues such as potholes, broken streetlights, sanitation, and more. Track statuses and help your city respond faster.</p>
+      </div>
+      <div class="card">
+        <h3>Recent Complaints</h3>
+        <div id="complaints-list" class="complaints"></div>
+        <div style="margin-top:10px;text-align:right"><a class="menu-link" href="/track.html">Track a Complaint →</a></div>
+      </div>
+    </section>
+
+    <section class="container section-gap" id="contact">
+      <h2>Contact</h2>
+      <p>Questions or feedback? Reach us at <a href="mailto:support@cityvoice.local">support@cityvoice.local</a>.</p>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div id="modal-auth" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="auth-title">Login</h3>
+        <button class="icon-btn" data-close-modal>✕</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-auth-tab="login">Login</button>
+        <button class="tab" data-auth-tab="signup">Sign Up</button>
+      </div>
+      <form id="form-login" class="form" autocomplete="on">
+        <label>Email
+          <input type="email" id="login-email" required />
+        </label>
+        <label>Password
+          <input type="password" id="login-password" required />
+        </label>
+        <button type="submit" class="btn btn-primary w-full">Login</button>
+      </form>
+      <form id="form-signup" class="form hidden" autocomplete="on">
+        <label>Name
+          <input type="text" id="signup-name" required />
+        </label>
+        <label>Email
+          <input type="email" id="signup-email" required />
+        </label>
+        <label>Password
+          <input type="password" id="signup-password" required />
+        </label>
+        <button type="submit" class="btn btn-primary w-full">Create Account</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-complaint" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Lodge a Complaint</h3>
+        <button class="icon-btn" data-close-modal>✕</button>
+      </div>
+      <form id="form-complaint" class="form">
+        <label>Title
+          <input type="text" id="complaint-title" required />
+        </label>
+        <label>Description
+          <textarea id="complaint-description" rows="4" required></textarea>
+        </label>
+        <label>Location (optional)
+          <input type="text" id="complaint-location" />
+        </label>
+        <button type="submit" class="btn btn-primary w-full">Submit</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const qs = (sel, el=document) => el.querySelector(sel);
+    const qsa = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+    const toast = (msg, type='info') => {
+      const t = qs('#toast');
+      t.textContent = msg;
+      t.className = `toast show ${type}`;
+      setTimeout(() => t.className = 'toast', 2200);
+    };
+
+    const storage = {
+      get token(){ return localStorage.getItem('cv_token'); },
+      set token(v){ localStorage.setItem('cv_token', v); },
+      clear(){ localStorage.removeItem('cv_token'); }
+    };
+
+    function updateAuthUI(){
+      const logged = Boolean(storage.token);
+      const authBtn = qs('#btn-auth-link');
+      const userMenu = qs('#menu-user');
+      if (authBtn) authBtn.style.display = logged ? 'none' : '';
+      if (userMenu) userMenu.style.display = logged ? 'inline-block' : 'none';
+    }
+
+    function openModal(id) {
+      const m = qs(id);
+      m.classList.remove('hidden');
+      m.setAttribute('aria-hidden', 'false');
+    }
+    function closeModal(id) {
+      const m = qs(id);
+      m.classList.add('hidden');
+      m.setAttribute('aria-hidden', 'true');
+    }
+
+    
+
+    async function api(path, { method='GET', body, auth=false } = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (auth && storage.token) headers['x-auth-token'] = storage.token;
+      const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    async function loadComplaints() {
+      try {
+        const list = await api('/api/complaints');
+        const container = qs('#complaints-list');
+        if (!list.length) {
+          container.innerHTML = '<div class="muted">No complaints yet. Be the first to raise one.</div>';
+          return;
+        }
+        container.innerHTML = list.slice().reverse().map(c => `
+          <div class="complaint">
+            <div class="c-head">
+              <span class="c-title">${c.title}</span>
+              <span class="badge ${c.status}">${c.status}</span>
+            </div>
+            <div class="c-body">${c.description}</div>
+            <div class="c-meta">${new Date(c.createdAt).toLocaleString()}${c.location ? ' • ' + c.location : ''}</div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+        toast('Failed to load complaints', 'error');
+      }
+    }
+
+    // Event wiring
+    window.addEventListener('DOMContentLoaded', () => {
+      updateAuthUI();
+      loadComplaints();
+
+      const authLink = qs('#btn-auth-link');
+      if (authLink) authLink.addEventListener('click', () => { window.location.href = '/auth.html'; });
+
+      const lodgeBtn = qs('#btn-open-complaint');
+      if (lodgeBtn) lodgeBtn.addEventListener('click', () => window.location.href = '/complaint.html');
+      const heroBtn = qs('#btn-hero-complaint') || qs('.hero .btn-primary');
+      if (heroBtn) {
+        if (heroBtn.tagName === 'A') heroBtn.setAttribute('href','/complaint.html');
+        heroBtn.addEventListener('click', (e) => { e.preventDefault?.(); window.location.href = '/complaint.html'; });
+      }
+
+      qsa('[data-close-modal]').forEach(b => b.addEventListener('click', (e) => {
+        const modal = e.target.closest('.modal');
+        if (modal) closeModal('#' + modal.id);
+      }));
+
+      // User dropdown
+      const btnUser = document.getElementById('btn-user');
+      const dropdown = document.getElementById('dropdown-user');
+      const dropLogout = document.getElementById('drop-logout');
+      function closeDropdown(){ if (dropdown){ dropdown.setAttribute('aria-hidden','true'); dropdown.classList.remove('open'); btnUser?.setAttribute('aria-expanded','false'); } }
+      function toggleDropdown(){ if (!dropdown) return; const open = dropdown.classList.toggle('open'); dropdown.setAttribute('aria-hidden', String(!open)); btnUser?.setAttribute('aria-expanded', String(open)); }
+      if (btnUser){ btnUser.addEventListener('click', (e) => { e.stopPropagation(); toggleDropdown(); }); }
+      if (dropLogout){ dropLogout.addEventListener('click', () => { storage.clear(); updateAuthUI(); toast('Logged out'); closeDropdown(); }); }
+      document.addEventListener('click', (e) => { if (!e.target.closest?.('.menu-user')) closeDropdown(); });
+
+
+      // Tabs
+      qsa('[data-auth-tab]').forEach(btn => btn.addEventListener('click', () => {
+        qsa('.tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        const mode = btn.getAttribute('data-auth-tab');
+        qs('#auth-title').textContent = mode === 'login' ? 'Login' : 'Sign Up';
+        qs('#form-login').classList.toggle('hidden', mode !== 'login');
+        qs('#form-signup').classList.toggle('hidden', mode !== 'signup');
+      }));
+
+      // Login
+      qs('#form-login').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = qs('#login-email').value.trim();
+        const password = qs('#login-password').value;
+        try {
+          const res = await api('/api/auth/login', { method: 'POST', body: { email, password } });
+          storage.token = res.token;
+          updateAuthUI();
+          toast('Welcome back');
+          closeModal('#modal-auth');
+        } catch (err) {
+          toast(err.message, 'error');
+        }
+      });
+
+      // Signup
+      qs('#form-signup').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = qs('#signup-name').value.trim();
+        const email = qs('#signup-email').value.trim();
+        const password = qs('#signup-password').value;
+        try {
+          const res = await api('/api/auth/signup', { method: 'POST', body: { name, email, password } });
+          storage.token = res.token;
+          updateAuthUI();
+          toast('Account created');
+          closeModal('#modal-auth');
+        } catch (err) {
+          toast(err.message, 'error');
+        }
+      });
+
+      // Create complaint
+      qs('#form-complaint').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = qs('#complaint-title').value.trim();
+        const description = qs('#complaint-description').value.trim();
+        const location = qs('#complaint-location').value.trim();
+        try {
+          await api('/api/complaints', { method: 'POST', auth: true, body: { title, description, location } });
+          toast('Complaint submitted');
+          closeModal('#modal-complaint');
+          qs('#form-complaint').reset();
+          
+        } catch (err) {
+          toast(err.message, 'error');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

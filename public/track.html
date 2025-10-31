@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CityVoice • Track Your Complaint</title>
+  <link rel="stylesheet" href="/index.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .track-wrap{max-width:900px;margin:24px auto;padding:0 16px}
+    .track-title{font-size:32px;font-weight:800;text-align:center;margin:12px 0 18px;color:#000}
+    .track-card{background:#fff;border:1px solid #e6eef5;border-radius:16px;padding:16px}
+    .search-row{display:flex;gap:10px}
+    .search-row input{flex:1;background:#fff;color:#000;border:1px solid #d8e5f0;border-radius:10px;padding:12px}
+    .search-row button{background:#0a74b8;color:#fff;border:1px solid #0a74b8;border-radius:10px;padding:12px 16px;font-weight:800;cursor:pointer}
+    .result{margin-top:16px}
+    .result .head{display:flex;justify-content:space-between;align-items:center}
+    .timeline{margin-top:12px;border-left:3px solid #e5e7eb;padding-left:12px}
+    .titem{margin:8px 0}
+  </style>
+</head>
+<body class="dashboard" style="background:#f7fbff">
+  <header class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <span class="logo">✴</span>
+        <a class="brand-name" href="/" style="color:#dff1ff;text-decoration:none">CityVoice</a>
+      </div>
+      <nav class="menu">
+        <a class="menu-link" href="/">Home</a>
+        <a class="menu-link" href="/index.html#about">About</a>
+        <a class="menu-link" href="/index.html#contact">Contact</a>
+      </nav>
+      <div class="actions">
+        <a class="btn btn-primary" href="/complaint.html">Log a Complaint</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="track-wrap">
+    <h1 class="track-title">Track Your Complaint</h1>
+    <div class="dash-card">
+      <div class="search-row" style="margin-bottom:12px">
+        <input id="track-input" placeholder="Enter Complaint ID (e.g., CV-2025-003 or 3)" />
+        <button id="track-btn">Search</button>
+        <button id="reset-btn" class="btn-soft" style="width:auto">Reset</button>
+      </div>
+      <p class="muted" id="table-desc">Overview of your submitted civic complaints. Click on a row for details.</p>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Complaint ID</th>
+              <th>Category</th>
+              <th>Date</th>
+              <th class="right">Status</th>
+            </tr>
+          </thead>
+          <tbody id="rows-body"></tbody>
+        </table>
+      </div>
+      <div id="rows-empty" class="muted" style="display:none;margin-top:8px">No complaints to show.</div>
+    </div>
+  </div>
+
+  <script>
+    function badge(status){
+      const cls = status === 'Resolved' ? 'badge-success' : status === 'In-Progress' ? 'badge-info' : 'badge-neutral';
+      return `<span class="badge ${cls}">${status || 'Submitted'}</span>`;
+    }
+    function displayId(id){
+      return `CV-${new Date().getFullYear()}-${String(id).padStart(3,'0')}`;
+    }
+    function parseInput(v){
+      v = (v||'').trim();
+      const m = v.match(/CV-\d{4}-(\d+)/i);
+      if (m) return Number(m[1]);
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+    async function fetchComplaint(id){
+      const res = await fetch(`/api/complaints/${id}`);
+      if (!res.ok) throw new Error('Not found');
+      return res.json();
+    }
+    function renderTable(list){
+      const tbody = document.getElementById('rows-body');
+      const empty = document.getElementById('rows-empty');
+      if (!list || !list.length){
+        tbody.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+      tbody.innerHTML = list.map(c => {
+        const dateStr = c.createdAt ? new Date(c.createdAt).toISOString().slice(0,10) : '';
+        return `
+          <tr class="row-item" data-id="${c.id}">
+            <td>${displayId(c.id)}</td>
+            <td>${c.category || '—'}</td>
+            <td class="muted">${dateStr}</td>
+            <td class="right">${badge(c.status)}</td>
+          </tr>
+        `;
+      }).join('');
+      document.querySelectorAll('.row-item').forEach(tr => tr.addEventListener('click', () => {
+        const id = tr.getAttribute('data-id');
+        window.location.href = `/complaint_detail.html?id=${id}`;
+      }));
+    }
+
+    let myList = [];
+    async function loadMine(){
+      const token = localStorage.getItem('cv_token');
+      if (!token){
+        document.getElementById('rows-empty').textContent = 'Login to see your complaints or search by ID above.';
+        document.getElementById('rows-empty').style.display = 'block';
+        return;
+      }
+      try{
+        const res = await fetch('/api/complaints?mine=1', { headers:{ 'x-auth-token': token }});
+        myList = await res.json();
+        renderTable(myList);
+      }catch{
+        document.getElementById('rows-empty').textContent = 'Unable to load your complaints.';
+        document.getElementById('rows-empty').style.display = 'block';
+      }
+    }
+
+    document.getElementById('track-btn').addEventListener('click', async () => {
+      const v = document.getElementById('track-input').value;
+      const id = parseInput(v);
+      if (!id) { alert('Enter a valid Complaint ID'); return; }
+      try{
+        const c = await fetchComplaint(id);
+        renderTable([c]);
+        document.getElementById('table-desc').textContent = 'Search Result';
+      }catch(err){
+        renderTable([]);
+        document.getElementById('rows-empty').textContent = 'Complaint not found.';
+        document.getElementById('rows-empty').style.display = 'block';
+      }
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      document.getElementById('track-input').value = '';
+      document.getElementById('table-desc').textContent = 'Overview of your submitted civic complaints. Click on a row for details.';
+      renderTable(myList);
+    });
+
+    loadMine();
+  </script>
+</body>
+</html>
