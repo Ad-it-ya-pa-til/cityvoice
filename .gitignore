@@ -3,3 +3,4 @@
 .env.local
 users.db
 users.db-journal
+node_modules
