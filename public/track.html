@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CityVoice • Track Your Complaint</title>
   <link rel="stylesheet" href="/index.css" />
+  <script src="/darkmode.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    .track-wrap{max-width:900px;margin:24px auto;padding:0 16px}
+    .track-wrap{max-width:1200px;margin:24px auto;padding:0 16px}
     .track-title{font-size:32px;font-weight:800;text-align:center;margin:12px 0 18px;color:#000}
     .track-card{background:#fff;border:1px solid #e6eef5;border-radius:16px;padding:16px}
     .search-row{display:flex;gap:10px}
@@ -19,6 +20,73 @@
     .result .head{display:flex;justify-content:space-between;align-items:center}
     .timeline{margin-top:12px;border-left:3px solid #e5e7eb;padding-left:12px}
     .titem{margin:8px 0}
+    
+    /* Progress Bar Styles */
+    .progress-container{margin:16px 0}
+    .progress-label{font-size:13px;font-weight:600;color:#4b5563;margin-bottom:6px}
+    .progress-bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}
+    .progress-fill{height:100%;border-radius:4px;transition:width 0.6s ease}
+    .progress-fill.submitted{background:#6b7280;width:25%}
+    .progress-fill.in-progress{background:#3b82f6;width:50%}
+    .progress-fill.under-review{background:#f59e0b;width:75%}
+    .progress-fill.resolved{background:#10b981;width:100%}
+    
+    /* Action Buttons */
+    .action-buttons{display:flex;gap:8px;margin-top:12px}
+    .action-btn{padding:6px 12px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s ease}
+    .edit-btn{background:#3b82f6;color:#fff}
+    .edit-btn:hover{background:#2563eb}
+    .delete-btn{background:#ef4444;color:#fff}
+    .delete-btn:hover{background:#dc2626}
+    
+    /* Modal Styles */
+    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000}
+    .modal.active{display:flex;align-items:center;justify-content:center}
+    .modal-content{background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
+    .modal-header{margin-bottom:20px}
+    .modal-title{font-size:20px;font-weight:700;color:#1f2937}
+    .modal-body{margin-bottom:20px}
+    .form-group{margin-bottom:16px}
+    .form-label{display:block;font-size:14px;font-weight:600;color:#374151;margin-bottom:6px}
+    .form-input{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px}
+    .form-textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;min-height:100px;resize:vertical}
+    .modal-footer{display:flex;gap:10px;justify-content:flex-end}
+    .modal-btn{padding:10px 16px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer}
+    .modal-btn-primary{background:#3b82f6;color:#fff}
+    .modal-btn-primary:hover{background:#2563eb}
+    .modal-btn-secondary{background:#6b7280;color:#fff}
+    .modal-btn-secondary:hover{background:#4b5563}
+    .modal-btn-danger{background:#ef4444;color:#fff}
+    .modal-btn-danger:hover{background:#dc2626}
+    
+    /* Enhanced Table */
+    .table{width:100%;border-collapse:collapse}
+    .table th{background:#f9fafb;font-weight:600;color:#374151;text-align:left;padding:12px;border-bottom:2px solid #e5e7eb}
+    .table td{padding:12px;border-bottom:1px solid #f3f4f6}
+    .table tr:hover{background:#f9fafb}
+    .complaint-row{cursor:pointer;position:relative}
+    .complaint-row:hover .action-buttons{opacity:1}
+    .action-buttons{opacity:0;transition:opacity 0.2s ease}
+    
+    /* Toast */
+    .toast{position:fixed;top:20px;right:20px;background:#1f2937;color:#fff;padding:12px 16px;border-radius:8px;z-index:2000;animation:slideIn 0.3s ease}
+    .toast.success{background:#10b981}
+    .toast.error{background:#ef4444}
+    @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+    
+    /* Dark Mode */
+    [data-theme="dark"] body{background:var(--bg) !important}
+    [data-theme="dark"] .track-title{color:var(--text) !important}
+    [data-theme="dark"] .track-card{background:var(--surface);border-color:var(--border)}
+    [data-theme="dark"] .search-row input{background:#0b141e;border-color:var(--border);color:var(--text)}
+    [data-theme="dark"] .modal-content{background:var(--surface)}
+    [data-theme="dark"] .modal-title{color:var(--text)}
+    [data-theme="dark"] .form-label{color:var(--text)}
+    [data-theme="dark"] .form-input,[data-theme="dark"] .form-textarea{background:#0b141e;border-color:var(--border);color:var(--text)}
+    [data-theme="dark"] .table th{background:#0f1b29;color:var(--text);border-bottom-color:var(--border)}
+    [data-theme="dark"] .table td{border-bottom-color:var(--border);color:var(--text)}
+    [data-theme="dark"] .table tr:hover{background:#0f1b29}
+    [data-theme="dark"] .progress-label{color:var(--text)}
   </style>
 </head>
 <body class="dashboard" style="background:#f7fbff">
@@ -53,15 +121,65 @@
           <thead>
             <tr>
               <th>Complaint ID</th>
+              <th>Title</th>
               <th>Category</th>
               <th>Date</th>
               <th class="right">Status</th>
+              <th class="right">Actions</th>
             </tr>
           </thead>
           <tbody id="rows-body"></tbody>
         </table>
       </div>
       <div id="rows-empty" class="muted" style="display:none;margin-top:8px">No complaints to show.</div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Complaint</h3>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="edit-title">Title</label>
+          <input type="text" id="edit-title" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edit-category">Category</label>
+          <input type="text" id="edit-category" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edit-description">Description</label>
+          <textarea id="edit-description" class="form-textarea"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edit-location">Location</label>
+          <input type="text" id="edit-location" class="form-input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-secondary" onclick="closeEditModal()">Cancel</button>
+        <button class="modal-btn modal-btn-primary" onclick="saveComplaint()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Modal -->
+  <div id="delete-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Delete Complaint</h3>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this complaint? This action cannot be undone.</p>
+        <p><strong id="delete-complaint-id"></strong></p>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        <button class="modal-btn modal-btn-danger" onclick="confirmDelete()">Delete</button>
+      </div>
     </div>
   </div>
 
@@ -72,6 +190,24 @@
     }
     function displayId(id){
       return `CV-${new Date().getFullYear()}-${String(id).padStart(3,'0')}`;
+    }
+    function getProgressClass(status){
+      const statusLower = (status || '').toLowerCase();
+      if (statusLower === 'resolved') return 'resolved';
+      if (statusLower === 'in-progress' || statusLower === 'in progress') return 'in-progress';
+      if (statusLower === 'under-review' || statusLower === 'under review') return 'under-review';
+      return 'submitted';
+    }
+    function getProgressBar(status){
+      const progressClass = getProgressClass(status);
+      return `
+        <div class="progress-container">
+          <div class="progress-label">Progress: ${status || 'Submitted'}</div>
+          <div class="progress-bar">
+            <div class="progress-fill ${progressClass}"></div>
+          </div>
+        </div>
+      `;
     }
     function parseInput(v){
       v = (v||'').trim();
@@ -97,18 +233,32 @@
       tbody.innerHTML = list.map(c => {
         const dateStr = c.createdAt ? new Date(c.createdAt).toISOString().slice(0,10) : '';
         return `
-          <tr class="row-item" data-id="${c.id}">
+          <tr class="complaint-row" data-id="${c.id}">
             <td>${displayId(c.id)}</td>
+            <td><strong>${c.title || 'Untitled'}</strong></td>
             <td>${c.category || '—'}</td>
             <td class="muted">${dateStr}</td>
-            <td class="right">${badge(c.status)}</td>
+            <td class="right">
+              ${badge(c.status)}
+              ${getProgressBar(c.status)}
+            </td>
+            <td class="right">
+              <div class="action-buttons">
+                <button class="action-btn edit-btn" onclick="editComplaint(${c.id})">Edit</button>
+                <button class="action-btn delete-btn" onclick="deleteComplaint(${c.id})">Delete</button>
+              </div>
+            </td>
           </tr>
         `;
       }).join('');
-      document.querySelectorAll('.row-item').forEach(tr => tr.addEventListener('click', () => {
-        const id = tr.getAttribute('data-id');
-        window.location.href = `/complaint_detail.html?id=${id}`;
-      }));
+      document.querySelectorAll('.complaint-row').forEach(tr => {
+        tr.addEventListener('click', (e) => {
+          if (!e.target.closest('.action-buttons')) {
+            const id = tr.getAttribute('data-id');
+            window.location.href = `/complaint_detail.html?id=${id}`;
+          }
+        });
+      });
     }
 
     let myList = [];
@@ -148,6 +298,127 @@
       document.getElementById('track-input').value = '';
       document.getElementById('table-desc').textContent = 'Overview of your submitted civic complaints. Click on a row for details.';
       renderTable(myList);
+    });
+
+    // Modal and CRUD functions
+    let currentEditId = null;
+    let currentDeleteId = null;
+
+    function editComplaint(id) {
+      event.stopPropagation();
+      currentEditId = id;
+      const complaint = myList.find(c => c.id === id);
+      if (complaint) {
+        document.getElementById('edit-title').value = complaint.title || '';
+        document.getElementById('edit-category').value = complaint.category || '';
+        document.getElementById('edit-description').value = complaint.description || '';
+        document.getElementById('edit-location').value = complaint.location || '';
+        document.getElementById('edit-modal').classList.add('active');
+      }
+    }
+
+    function deleteComplaint(id) {
+      event.stopPropagation();
+      currentDeleteId = id;
+      document.getElementById('delete-complaint-id').textContent = displayId(id);
+      document.getElementById('delete-modal').classList.add('active');
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-modal').classList.remove('active');
+      currentEditId = null;
+    }
+
+    function closeDeleteModal() {
+      document.getElementById('delete-modal').classList.remove('active');
+      currentDeleteId = null;
+    }
+
+    async function saveComplaint() {
+      if (!currentEditId) return;
+      
+      const token = localStorage.getItem('cv_token');
+      if (!token) {
+        showToast('Please login to edit complaints', 'error');
+        return;
+      }
+
+      const updatedData = {
+        title: document.getElementById('edit-title').value,
+        category: document.getElementById('edit-category').value,
+        description: document.getElementById('edit-description').value,
+        location: document.getElementById('edit-location').value
+      };
+
+      try {
+        const res = await fetch(`/api/complaints/${currentEditId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': token
+          },
+          body: JSON.stringify(updatedData)
+        });
+
+        if (res.ok) {
+          showToast('Complaint updated successfully', 'success');
+          closeEditModal();
+          loadMine(); // Reload the list
+        } else {
+          showToast('Failed to update complaint', 'error');
+        }
+      } catch (error) {
+        showToast('Error updating complaint', 'error');
+      }
+    }
+
+    async function confirmDelete() {
+      if (!currentDeleteId) return;
+      
+      const token = localStorage.getItem('cv_token');
+      if (!token) {
+        showToast('Please login to delete complaints', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/complaints/${currentDeleteId}`, {
+          method: 'DELETE',
+          headers: {
+            'x-auth-token': token
+          }
+        });
+
+        if (res.ok) {
+          showToast('Complaint deleted successfully', 'success');
+          closeDeleteModal();
+          loadMine(); // Reload the list
+        } else {
+          showToast('Failed to delete complaint', 'error');
+        }
+      } catch (error) {
+        showToast('Error deleting complaint', 'error');
+      }
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+
+    // Close modals when clicking outside
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal')) {
+        e.target.classList.remove('active');
+        currentEditId = null;
+        currentDeleteId = null;
+      }
     });
 
     loadMine();

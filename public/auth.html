@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CityVoice • Login</title>
   <link rel="stylesheet" href="/index.css" />
+  <script src="/darkmode.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -28,10 +29,10 @@
       <!-- Login form -->
       <form id="login-form" class="auth-form" autocomplete="on">
         <label>Email
-          <input id="login-email" type="email" value="aditya@gmail.com" required />
+          <input id="login-email" type="email" placeholder="you@example.com" required />
         </label>
         <label>Password
-          <input id="login-password" type="password" value="password" required />
+          <input id="login-password" type="password" placeholder="••••••••" required />
         </label>
         <button class="auth-btn" type="submit">Login</button>
       </form>
@@ -70,6 +71,17 @@
     const tabs = document.querySelectorAll('.auth-tab');
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
+    const storage = { 
+      get token(){ return localStorage.getItem('cv_token'); },
+      set token(v){ localStorage.setItem('cv_token', v); }
+    };
+    
+    // Redirect to home if already logged in
+    if (storage.token) {
+      window.location.href = '/';
+    }
+    
+    // Tab switching
     tabs.forEach(btn => btn.addEventListener('click', () => {
       tabs.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -77,6 +89,43 @@
       if (mode === 'login') { loginForm.style.display='flex'; signupForm.style.display='none'; }
       else { signupForm.style.display='flex'; loginForm.style.display='none'; }
     }));
+    
+    // API helper
+    async function api(path, { method='GET', body }={}){
+      const res = await fetch(path, { method, headers:{ 'Content-Type':'application/json' }, body: body?JSON.stringify(body):undefined });
+      const data = await res.json().catch(()=>({}));
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+    
+    // Login form
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      try{
+        const res = await api('/api/auth/login', { method:'POST', body:{ email, password } });
+        storage.token = res.token;
+        window.location.href = '/';
+      }catch(err){
+        alert(err.message);
+      }
+    });
+    
+    // Signup form
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('signup-name').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      try{
+        const res = await api('/api/auth/signup', { method:'POST', body:{ name, email, password } });
+        storage.token = res.token;
+        window.location.href = '/';
+      }catch(err){
+        alert(err.message);
+      }
+    });
   </script>
 </body>
 </html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile - CityVoice</title>
+  <link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/profile.css?v=2">
+  <script src="/darkmode.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="profile-container">
+    <div class="profile-header">
+      <h1>My Profile</h1>
+      <p>Update your personal information</p>
+    </div>
+
+    <div class="profile-picture">
+      <div class="picture-wrapper">
+        <img id="profile-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='60' fill='%23667eea'/%3E%3Cpath d='M60 55c8.284 0 15-6.716 15-15s-6.716-15-15-15-15 6.716-15 15 6.716 15 15 15zm0 7.5c-10.002 0-30 5.025-30 15v7.5h60v-7.5c0-9.975-19.998-15-30-15z' fill='white'/%3E%3C/svg%3E" alt="Profile Picture">
+        <label for="file-upload" class="upload-button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </label>
+        <input type="file" id="file-upload" class="upload-input" accept="image/*">
+      </div>
+      <label for="file-upload" class="change-photo-text">Change Photo</label>
+    </div>
+
+    <form class="profile-form" id="profile-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="first-name">First Name</label>
+          <input type="text" id="first-name" class="form-input" placeholder="John" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="surname">Surname</label>
+          <input type="text" id="surname" class="form-input" placeholder="Doe" required>
+        </div>
+      </div>
+
+      <div class="form-group full-width">
+        <label class="form-label" for="email">Email Address</label>
+        <input type="email" id="email" class="form-input" placeholder="john.doe@example.com" required>
+      </div>
+
+      <div class="form-group full-width">
+        <label class="form-label" for="contact">Contact Number</label>
+        <input type="tel" id="contact" class="form-input" placeholder="123-4567" required>
+      </div>
+
+      <div class="form-group full-width">
+        <label class="form-label" for="address">Address</label>
+        <textarea id="address" class="form-textarea" placeholder="chandigarh, punjab" rows="3"></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-save">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Save Changes
+        </button>
+        <button type="button" class="btn btn-discard" id="btn-discard">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          Discard
+        </button>
+      </div>
+    </form>
+
+    <div class="back-link">
+      <a href="/">← Back to Home</a>
+    </div>
+  </div>
+
+  <script>
+    const storage = {
+      get token() { return localStorage.getItem('cv_token'); },
+      clear() { localStorage.removeItem('cv_token'); }
+    };
+
+    // Redirect to auth if not logged in
+    if (!storage.token) {
+      window.location.href = '/auth.html';
+    }
+
+    // Profile picture upload
+    const fileInput = document.getElementById('file-upload');
+    const profileImg = document.getElementById('profile-img');
+
+    fileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          profileImg.src = event.target.result;
+          // Save to localStorage
+          localStorage.setItem('cv_profile_img', event.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Load saved data
+    function loadProfile() {
+      const savedImg = localStorage.getItem('cv_profile_img');
+      if (savedImg) {
+        profileImg.src = savedImg;
+      }
+
+      const profile = JSON.parse(localStorage.getItem('cv_profile') || '{}');
+      if (profile.firstName) document.getElementById('first-name').value = profile.firstName;
+      if (profile.surname) document.getElementById('surname').value = profile.surname;
+      if (profile.email) document.getElementById('email').value = profile.email;
+      if (profile.contact) document.getElementById('contact').value = profile.contact;
+      if (profile.address) document.getElementById('address').value = profile.address;
+    }
+
+    // Save profile
+    document.getElementById('profile-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const profile = {
+        firstName: document.getElementById('first-name').value.trim(),
+        surname: document.getElementById('surname').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        contact: document.getElementById('contact').value.trim(),
+        address: document.getElementById('address').value.trim()
+      };
+
+      localStorage.setItem('cv_profile', JSON.stringify(profile));
+      
+      // Show success message
+      alert('Profile saved successfully!');
+    });
+
+    // Discard changes
+    document.getElementById('btn-discard').addEventListener('click', function() {
+      if (confirm('Are you sure you want to discard all changes?')) {
+        loadProfile();
+      }
+    });
+
+    // Load profile on page load
+    loadProfile();
+  </script>
+</body>
+</html>

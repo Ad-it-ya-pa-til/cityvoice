@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CityVoice • Complaint Details</title>
   <link rel="stylesheet" href="/index.css" />
+  <script src="/darkmode.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -17,7 +18,7 @@
         <a class="brand-name" href="/" style="color:#dff1ff;text-decoration:none">CityVoice</a>
       </div>
       <nav class="menu">
-        <a class="menu-link" href="/dashboard.html">Dashboard</a>
+        <a class="menu-link" href="/">Home</a>
         <a class="menu-link" href="/index.html#about">About</a>
         <a class="menu-link" href="/index.html#contact">Contact</a>
       </nav>
@@ -68,7 +69,7 @@
     const params = new URLSearchParams(location.search);
     const id = params.get('id');
     const token = localStorage.getItem('cv_token');
-    if (!id) { alert('Missing complaint id'); location.href = '/dashboard.html'; }
+    if (!id) { alert('Missing complaint id'); location.href = '/'; }
 
     fetch(`/api/complaints/${id}`, { headers: token ? { 'x-auth-token': token } : {} })
       .then(r => r.json())
@@ -102,7 +103,7 @@
           ev.innerHTML = '<span class="muted">No evidence uploaded.</span>';
         }
       })
-      .catch(() => { alert('Complaint not found'); location.href = '/dashboard.html'; });
+      .catch(() => { alert('Complaint not found'); location.href = '/'; });
   </script>
 </body>
 </html>

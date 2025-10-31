@@ -1,0 +1,123 @@
+/* Map Preview Styles */
+#map-preview {
+  height: 350px !important;
+  width: 100% !important;
+  border-radius: 14px;
+  margin: 12px 0;
+  border: 1px solid #dbe6f1;
+  z-index: 1;
+  position: relative;
+  background: #f8f9fa;
+  min-height: 350px;
+  max-width: 100%;
+  overflow: hidden;
+  display: block;
+  /* Reset any inherited transforms or positioning */
+  transform: none;
+  box-sizing: border-box;
+}
+
+#map-preview * {
+  box-sizing: border-box;
+}
+
+/* Ensure Leaflet map fills container */
+#map-preview .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  position: relative !important;
+}
+
+/* Fix tile positioning */
+#map-preview .leaflet-pane,
+#map-preview .leaflet-map-pane {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+}
+
+#map-preview .leaflet-tile-pane {
+  position: absolute !important;
+}
+
+#map-preview .leaflet-tile-container {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+}
+
+#map-preview.loading::before {
+  content: '🗺️ Loading map...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  color: #5b6b7a;
+  z-index: 1000;
+  background: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+.map-instructions {
+  font-size: 13px;
+  color: #5b6b7a;
+  margin: 8px 0;
+}
+
+.coordinates-display {
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  color: #0a74b8;
+  margin-top: 8px;
+  background: #f2f6fb;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.coordinates-display span {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+/* Leaflet popup customization */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+}
+
+.leaflet-popup-content {
+  margin: 12px;
+  font-size: 14px;
+}
+
+/* Custom marker styles */
+.custom-marker-icon {
+  background: #0a74b8;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Dark Mode Styles */
+[data-theme="dark"] #map-preview {
+  background: #0b141e;
+  border-color: #1f2a37;
+}
+
+[data-theme="dark"] .map-instructions {
+  color: #9aa5b1;
+}
+
+[data-theme="dark"] .coordinates-display {
+  background: #0b141e;
+  color: #60a5fa;
+  border: 1px solid #1f2a37;
+}
+
+[data-theme="dark"] .coordinates-display span {
+  color: #3b82f6;
+}

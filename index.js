@@ -8,13 +8,29 @@ const { v2: cloudinary } = require('cloudinary');
 const compression = require('compression');
 const helmet = require('helmet');
 
+// Import database functions
+const db = require('./database/db');
+
 // 2. Create an instance of an Express app
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Performance & security
 app.set('etag', 'strong');
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "https://*.tile.openstreetmap.org", "https://*.openstreetmap.org"],
+      connectSrc: ["'self'", "https://unpkg.com", "https://nominatim.openstreetmap.org", "https://*.tile.openstreetmap.org"],
+      workerSrc: ["'self'", "blob:"],
+      childSrc: ["'self'", "blob:"],
+    },
+  },
+}));
 app.use(compression({ threshold: 1024 })); // compress responses >1KB
 
 // Static assets: long-term cache for assets, no-cache for HTML
@@ -60,18 +76,22 @@ const maybeUpload = (req, res, next) => {
 
 // --- External services init (Firebase Admin, Cloudinary) ---
 dotenv.config();
+let firebaseEnabled = false;
 try {
   if (!admin.apps.length) {
     let creds = null;
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       creds = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf8'));
     }
-    if (creds) {
+    if (creds && creds.project_id && creds.private_key && creds.client_email) {
       admin.initializeApp({ credential: admin.credential.cert(creds) });
+      firebaseEnabled = true;
+      console.log('Firebase Admin initialized successfully');
     }
   }
 } catch (e) {
   console.warn('Firebase Admin not initialized:', e.message);
+  firebaseEnabled = false;
 }
 try {
   cloudinary.config({
@@ -146,7 +166,7 @@ app.post('/api/auth/login', (req, res) => {
 // Register user with Firebase Admin
 app.post('/api/auth/register', async (req, res) => {
   try {
-    if (!admin.apps.length) return res.status(503).json({ error: 'firebase not configured' });
+    if (!firebaseEnabled) return res.status(503).json({ error: 'firebase not configured' });
     const { email, password, displayName, fcmToken } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
     const user = await admin.auth().createUser({ email, password, displayName });
@@ -160,9 +180,9 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 // Login verification using Firebase ID token
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/verify', async (req, res) => {
   try {
-    if (!admin.apps.length) return res.status(503).json({ error: 'firebase not configured' });
+    if (!firebaseEnabled) return res.status(503).json({ error: 'firebase not configured' });
     const { idToken, fcmToken } = req.body || {};
     if (!idToken) return res.status(400).json({ error: 'idToken required' });
     const decoded = await admin.auth().verifyIdToken(idToken);
@@ -179,8 +199,8 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Middleware to verify Firebase ID token from Authorization: Bearer <token>
-function authMiddleware(req, res, next) {
-  if (!admin.apps.length) return res.status(401).json({ error: 'firebase not configured' });
+function requireFirebaseAuth(req, res, next) {
+  if (!firebaseEnabled) return res.status(401).json({ error: 'firebase not configured' });
   const idToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!idToken) return res.status(401).json({ error: 'missing id token' });
   admin.auth().verifyIdToken(idToken)
@@ -191,7 +211,7 @@ function authMiddleware(req, res, next) {
 // Current user
 app.get('/api/users/me', async (req, res) => {
   const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  if (bearer && admin.apps.length) {
+  if (bearer && firebaseEnabled) {
     try {
       const decoded = await admin.auth().verifyIdToken(bearer);
       return res.json({ name: decoded.name || null, email: decoded.email || null, uid: decoded.uid });
@@ -202,62 +222,187 @@ app.get('/api/users/me', async (req, res) => {
   res.json({ name: user.name, email: user.email });
 });
 
-// Complaint routes
-app.post('/api/complaints', maybeUpload, (req, res) => {
-  const user = getUserFromToken(req);
-  const { title, description, location, category } = req.body || {};
-  if (!title || !description) {
-    return res.status(400).json({ error: 'title and description are required' });
+// Complaint routes - Using Firestore Database
+app.post('/api/complaints', maybeUpload, async (req, res) => {
+  try {
+    // Get user from Firebase token
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    let userId = null;
+    let userEmail = null;
+    
+    if (bearer && firebaseEnabled) {
+      try {
+        const decoded = await admin.auth().verifyIdToken(bearer);
+        userId = decoded.uid;
+        userEmail = decoded.email;
+      } catch (e) {
+        return res.status(401).json({ error: 'Invalid authentication token' });
+      }
+    } else {
+      const user = getUserFromToken(req);
+      if (!user) return res.status(401).json({ error: 'unauthorized' });
+      userEmail = user.email;
+    }
+    
+    const { title, description, location, category } = req.body || {};
+    if (!title || !description) {
+      return res.status(400).json({ error: 'title and description are required' });
+    }
+    
+    let { lat, lng } = req.body || {};
+    const evidenceUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    // Create complaint in Firestore
+    const complaintData = {
+      userId: userId || userEmail,
+      title,
+      description,
+      category: category || 'general',
+      location: {
+        address: location || 'Not specified',
+        lat: lat ? Number(lat) : null,
+        lng: lng ? Number(lng) : null
+      },
+      evidence: evidenceUrl
+    };
+    
+    const complaint = await db.createComplaint(complaintData);
+    
+    // Create notification for user
+    if (userId) {
+      await db.createNotification({
+        userId,
+        type: 'complaint_update',
+        title: 'Complaint Submitted',
+        message: `Your complaint "${title}" has been submitted successfully.`,
+        link: `/track.html?id=${complaint.complaintId}`
+      });
+    }
+    
+    res.status(201).json(complaint);
+  } catch (error) {
+    console.error('Error creating complaint:', error);
+    res.status(500).json({ error: error.message });
   }
-  let { lat, lng } = req.body || {};
-  const coords = (lat && lng) ? { lat: Number(lat), lng: Number(lng) } : null;
-  const evidenceUrl = req.file ? `/uploads/${req.file.filename}` : null;
-  const complaint = {
-    id: complaintId++,
-    title,
-    description,
-    location: location || null,
-    category: category || null,
-    status: 'open',
-    userEmail: user ? user.email : null,
-    createdAt: new Date().toISOString(),
-    coords,
-    evidenceUrl,
-  };
-  complaints.push(complaint);
-  res.status(201).json(complaint);
 });
 
 app.get('/api/complaints', async (req, res) => {
-  const { mine } = req.query || {};
-  if (mine) {
-    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    if (bearer && admin.apps.length) {
-      try {
-        const decoded = await admin.auth().verifyIdToken(bearer);
-        const mineList = complaints.filter(c => c.userUid === decoded.uid || c.userEmail === decoded.email);
-        return res.json(mineList);
-      } catch (_) {}
+  try {
+    const { mine } = req.query || {};
+    
+    if (mine) {
+      const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      if (bearer && firebaseEnabled) {
+        try {
+          const decoded = await admin.auth().verifyIdToken(bearer);
+          const userComplaints = await db.getComplaintsByUser(decoded.uid);
+          return res.json(userComplaints);
+        } catch (e) {
+          return res.status(401).json({ error: 'Invalid token' });
+        }
+      }
+      return res.status(401).json({ error: 'unauthorized' });
     }
-    const user = getUserFromToken(req);
-    if (!user) return res.status(401).json({ error: 'unauthorized' });
-    const mineList = complaints.filter(c => c.userEmail === user.email);
-    return res.json(mineList);
+    
+    // Return all complaints (for admin or public view)
+    // Note: In production, you may want to implement pagination
+    const allComplaints = []; // Implement getAllComplaints if needed
+    res.json(allComplaints);
+  } catch (error) {
+    console.error('Error fetching complaints:', error);
+    res.status(500).json({ error: error.message });
   }
-  res.json(complaints);
 });
 
-app.get('/api/complaints/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const c = complaints.find(x => x.id === id);
-  if (!c) return res.status(404).json({ error: 'not found' });
-  res.json(c);
+app.get('/api/complaints/:id', async (req, res) => {
+  try {
+    const complaintId = req.params.id;
+    const complaint = await db.getComplaintById(complaintId);
+    
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+    
+    res.json(complaint);
+  } catch (error) {
+    console.error('Error fetching complaint:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/complaints/:id', async (req, res) => {
+  try {
+    const complaintId = req.params.id;
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    
+    if (!bearer || !firebaseEnabled) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(bearer);
+    const { status, title, category, description, location } = req.body || {};
+    
+    // Verify complaint belongs to user (implement ownership check in db.js if needed)
+    const complaint = await db.getComplaintById(complaintId);
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+    
+    if (complaint.userId !== decoded.uid) {
+      return res.status(403).json({ error: 'Forbidden: Not your complaint' });
+    }
+    
+    // Update complaint with new status or details
+    if (status) {
+      const message = `Status updated to ${status}`;
+      const updated = await db.updateComplaintStatus(complaintId, status, message);
+      return res.json(updated);
+    }
+    
+    // For other updates, you'd need to implement updateComplaint in db.js
+    res.json({ message: 'Update functionality to be implemented' });
+  } catch (error) {
+    console.error('Error updating complaint:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/complaints/:id', async (req, res) => {
+  try {
+    const complaintId = req.params.id;
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    
+    if (!bearer || !firebaseEnabled) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(bearer);
+    
+    // Verify complaint belongs to user
+    const complaint = await db.getComplaintById(complaintId);
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+    
+    if (complaint.userId !== decoded.uid) {
+      return res.status(403).json({ error: 'Forbidden: Not your complaint' });
+    }
+    
+    await db.deleteComplaint(complaintId);
+    res.json({ message: 'Complaint deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting complaint:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // --- New complaint submit route using Cloudinary & geolocation ---
 // Accepts multipart (with field name 'evidence') or JSON (no file)
-app.post('/api/complaints/submit', authMiddleware, memUpload.single('evidence'), async (req, res) => {
+app.post('/api/complaints/submit', memUpload.single('evidence'), async (req, res) => {
   try {
+    const user = getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'unauthorized' });
+    
     const { title, description, category, lat, lng, location } = req.body || {};
     if (!title || !description) return res.status(400).json({ error: 'title and description required' });
     let evidenceUrl = null;
@@ -277,8 +422,7 @@ app.post('/api/complaints/submit', authMiddleware, memUpload.single('evidence'),
       location: location || null,
       category: category || null,
       status: 'Submitted',
-      userUid: req.firebaseUser.uid,
-      userEmail: req.firebaseUser.email || null,
+      userEmail: user.email,
       createdAt: new Date().toISOString(),
       coords: (lat && lng) ? { lat: Number(lat), lng: Number(lng) } : null,
       evidenceUrl,
@@ -300,7 +444,7 @@ app.post('/api/admin/update-status/:complaintId', async (req, res) => {
     if (!status) return res.status(400).json({ error: 'status required' });
     c.status = status;
     // Send FCM if we have token in custom claims
-    if (admin.apps.length && c.userUid) {
+    if (firebaseEnabled && c.userUid) {
       try {
         const userRecord = await admin.auth().getUser(c.userUid);
         const fcmToken = userRecord.customClaims && userRecord.customClaims.fcmToken;
@@ -321,16 +465,338 @@ app.post('/api/admin/update-status/:complaintId', async (req, res) => {
   }
 });
 
-app.put('/api/complaints/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const c = complaints.find(x => x.id === id);
-  if (!c) return res.status(404).json({ error: 'not found' });
-  const { status, title, description, location } = req.body || {};
-  if (status) c.status = status;
-  if (title) c.title = title;
-  if (description) c.description = description;
-  if (location) c.location = location;
-  res.json(c);
+// ==================== USER PROFILE API ====================
+
+// Get user profile
+app.get('/api/users/profile', async (req, res) => {
+  try {
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!bearer || !firebaseEnabled) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(bearer);
+    const user = await db.getUserById(decoded.uid);
+    
+    if (!user) {
+      // Create user profile if it doesn't exist
+      const newUser = await db.createUser({
+        uid: decoded.uid,
+        email: decoded.email,
+        firstName: decoded.name || '',
+        surname: ''
+      });
+      return res.json(newUser);
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user profile
+app.put('/api/users/profile', async (req, res) => {
+  try {
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!bearer || !firebaseEnabled) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(bearer);
+    const updates = req.body;
+    
+    const updatedUser = await db.updateUser(decoded.uid, updates);
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== REPORTS API ====================
+
+// Create a new report
+app.post('/api/reports', async (req, res) => {
+  try {
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!bearer || !firebaseEnabled) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(bearer);
+    const reportData = {
+      userId: decoded.uid,
+      ...req.body
+    };
+    
+    const report = await db.createReport(reportData);
+    res.status(201).json(report);
+  } catch (error) {
+    console.error('Error creating report:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user's reports
+app.get('/api/reports', async (req, res) => {
+  try {
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!bearer || !firebaseEnabled) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(bearer);
+    const reports = await db.getReportsByUser(decoded.uid);
+    res.json(reports);
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== COMMUNITY API ====================
+
+// Create a community post
+app.post('/api/community/posts', async (req, res) => {
+  try {
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!bearer || !firebaseEnabled) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(bearer);
+    const user = await db.getUserById(decoded.uid);
+    
+    const postData = {
+      userId: decoded.uid,
+      userName: user ? `${user.firstName} ${user.surname}`.trim() : decoded.email,
+      userAvatar: user?.profilePicture || null,
+      ...req.body
+    };
+    
+    const post = await db.createCommunityPost(postData);
+    res.status(201).json(post);
+  } catch (error) {
+    console.error('Error creating post:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get community posts
+app.get('/api/community/posts', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const posts = await db.getCommunityPosts(limit);
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add comment to a post
+app.post('/api/community/posts/:postId/comments', async (req, res) => {
+  try {
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!bearer || !firebaseEnabled) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(bearer);
+    const user = await db.getUserById(decoded.uid);
+    const { postId } = req.params;
+    
+    const commentData = {
+      postId,
+      userId: decoded.uid,
+      userName: user ? `${user.firstName} ${user.surname}`.trim() : decoded.email,
+      userAvatar: user?.profilePicture || null,
+      content: req.body.content
+    };
+    
+    const comment = await db.addComment(commentData);
+    res.status(201).json(comment);
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get comments for a post
+app.get('/api/community/posts/:postId/comments', async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const comments = await db.getCommentsByPost(postId);
+    res.json(comments);
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== NOTIFICATIONS API ====================
+
+// Get user notifications
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!bearer || !firebaseEnabled) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(bearer);
+    const limit = parseInt(req.query.limit) || 20;
+    const notifications = await db.getNotificationsByUser(decoded.uid, limit);
+    res.json(notifications);
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== ANALYTICS API ====================
+
+// Log analytics event
+app.post('/api/analytics', async (req, res) => {
+  try {
+    const analyticsData = req.body;
+    await db.logAnalytics(analyticsData);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error logging analytics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== ADMIN API ====================
+
+// Middleware to check if user is admin
+async function requireAdmin(req, res, next) {
+  try {
+    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!bearer || !firebaseEnabled) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(bearer);
+    const user = await db.getUserById(decoded.uid);
+    
+    // Check if user has admin role
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    req.adminUser = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid authentication' });
+  }
+}
+
+// Get all complaints (admin only)
+app.get('/api/admin/complaints', requireAdmin, async (req, res) => {
+  try {
+    // For now, we'll get all complaints
+    // In production, implement pagination and filtering in db.js
+    const adminDb = admin.firestore();
+    const snapshot = await adminDb.collection('complaints')
+      .orderBy('createdAt', 'desc')
+      .get();
+    
+    const complaints = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    res.json(complaints);
+  } catch (error) {
+    console.error('Error fetching all complaints:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete complaint (admin only)
+app.delete('/api/admin/complaints/:id', requireAdmin, async (req, res) => {
+  try {
+    const complaintId = req.params.id;
+    await db.deleteComplaint(complaintId);
+    res.json({ message: 'Complaint deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting complaint:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all users (admin only)
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  try {
+    const adminDb = admin.firestore();
+    const snapshot = await adminDb.collection('users')
+      .orderBy('createdAt', 'desc')
+      .get();
+    
+    const users = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user role (admin only)
+app.put('/api/admin/users/:uid/role', requireAdmin, async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const { role } = req.body;
+    
+    if (!['user', 'admin', 'moderator'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+    
+    const updatedUser = await db.updateUser(uid, { role });
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get dashboard statistics (admin only)
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+  try {
+    const adminDb = admin.firestore();
+    
+    // Get complaint statistics
+    const complaintsSnapshot = await adminDb.collection('complaints').get();
+    const complaints = complaintsSnapshot.docs.map(doc => doc.data());
+    
+    const stats = {
+      totalComplaints: complaints.length,
+      submitted: complaints.filter(c => c.status === 'submitted').length,
+      inProgress: complaints.filter(c => c.status === 'in-progress').length,
+      underReview: complaints.filter(c => c.status === 'under-review').length,
+      resolved: complaints.filter(c => c.status === 'resolved').length,
+      byCategory: {},
+      recentComplaints: complaints.slice(0, 10)
+    };
+    
+    // Count by category
+    complaints.forEach(c => {
+      const cat = c.category || 'other';
+      stats.byCategory[cat] = (stats.byCategory[cat] || 0) + 1;
+    });
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // 5. Start the server
