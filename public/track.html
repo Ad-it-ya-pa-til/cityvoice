@@ -5,92 +5,150 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CityVoice • Track Your Complaint</title>
   <link rel="stylesheet" href="/index.css" />
+  <link rel="stylesheet" href="/animations.css" />
   <script src="/darkmode.js"></script>
+  <script src="/scroll-animations.js" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    .track-wrap{max-width:1200px;margin:24px auto;padding:0 16px}
-    .track-title{font-size:32px;font-weight:800;text-align:center;margin:12px 0 18px;color:#000}
-    .track-card{background:#fff;border:1px solid #e6eef5;border-radius:16px;padding:16px}
-    .search-row{display:flex;gap:10px}
-    .search-row input{flex:1;background:#fff;color:#000;border:1px solid #d8e5f0;border-radius:10px;padding:12px}
-    .search-row button{background:#0a74b8;color:#fff;border:1px solid #0a74b8;border-radius:10px;padding:12px 16px;font-weight:800;cursor:pointer}
+    body{background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);min-height:100vh}
+    .track-wrap{max-width:1400px;margin:40px auto;padding:0 20px}
+    .track-title{font-size:42px;font-weight:900;text-align:center;margin:0 0 12px;color:#1e293b;text-shadow:0 2px 4px rgba(0,0,0,0.05)}
+    .track-subtitle{text-align:center;color:#64748b;font-size:18px;margin-bottom:40px}
+    .track-card{background:#fff;border:none;border-radius:20px;padding:32px;box-shadow:0 8px 32px rgba(0,0,0,0.08);transition:all 0.3s ease}
+    .track-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,0.12)}
+    .search-row{display:flex;gap:12px;margin-bottom:32px}
+    .search-row input{flex:1;background:#f8fafc;color:#1e293b;border:2px solid #e2e8f0;border-radius:14px;padding:16px 20px;font-size:16px;font-weight:500;transition:all 0.3s ease}
+    .search-row input:focus{outline:none;border-color:#3b82f6;background:#fff;box-shadow:0 0 0 4px rgba(59,130,246,0.1);transform:translateY(-2px)}
+    .search-row input::placeholder{color:#94a3b8}
+    .search-row button{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);color:#fff;border:none;border-radius:14px;padding:16px 32px;font-weight:700;cursor:pointer;transition:all 0.3s ease;box-shadow:0 4px 12px rgba(59,130,246,0.3)}
+    .search-row button:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(59,130,246,0.4)}
+    .search-row button:active{transform:translateY(0)}
     .result{margin-top:16px}
     .result .head{display:flex;justify-content:space-between;align-items:center}
     .timeline{margin-top:12px;border-left:3px solid #e5e7eb;padding-left:12px}
     .titem{margin:8px 0}
     
-    /* Progress Bar Styles */
-    .progress-container{margin:16px 0}
-    .progress-label{font-size:13px;font-weight:600;color:#4b5563;margin-bottom:6px}
-    .progress-bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}
-    .progress-fill{height:100%;border-radius:4px;transition:width 0.6s ease}
-    .progress-fill.submitted{background:#6b7280;width:25%}
-    .progress-fill.in-progress{background:#3b82f6;width:50%}
-    .progress-fill.under-review{background:#f59e0b;width:75%}
-    .progress-fill.resolved{background:#10b981;width:100%}
+    /* Enhanced Progress Bar */
+    .progress-container{margin:12px 0;padding:16px;background:#f8fafc;border-radius:12px}
+    .progress-label{font-size:14px;font-weight:700;color:#1e293b !important;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .progress-label::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulse 2s ease-in-out infinite}
+    .progress-bar{height:10px;background:#e2e8f0;border-radius:8px;overflow:hidden;position:relative}
+    .progress-fill{height:100%;border-radius:8px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden}
+    .progress-fill::after{content:'';position:absolute;top:0;left:0;bottom:0;right:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent);animation:shimmer 2s infinite}
+    .progress-fill.submitted{background:linear-gradient(135deg,#64748b 0%,#475569 100%);width:25%}
+    .progress-fill.in-progress{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);width:50%}
+    .progress-fill.under-review{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);width:75%}
+    .progress-fill.resolved{background:linear-gradient(135deg,#10b981 0%,#059669 100%);width:100%}
+    @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
     
-    /* Action Buttons */
-    .action-buttons{display:flex;gap:8px;margin-top:12px}
-    .action-btn{padding:6px 12px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s ease}
-    .edit-btn{background:#3b82f6;color:#fff}
-    .edit-btn:hover{background:#2563eb}
-    .delete-btn{background:#ef4444;color:#fff}
-    .delete-btn:hover{background:#dc2626}
+    /* Enhanced Action Buttons */
+    .action-buttons{display:flex;gap:10px;margin-top:12px}
+    .action-btn{padding:8px 16px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.3s ease;position:relative;overflow:hidden}
+    .action-btn::before{content:'';position:absolute;top:50%;left:50%;width:0;height:0;border-radius:50%;background:rgba(255,255,255,0.3);transform:translate(-50%,-50%);transition:width 0.6s,height 0.6s}
+    .action-btn:active::before{width:300px;height:300px}
+    .edit-btn{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,0.3)}
+    .edit-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(59,130,246,0.4)}
+    .delete-btn{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.3)}
+    .delete-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(239,68,68,0.4)}
+    .view-btn{background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:#fff;box-shadow:0 2px 8px rgba(16,185,129,0.3)}
+    .view-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,185,129,0.4)}
     
-    /* Modal Styles */
-    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000}
+    /* Enhanced Modal */
+    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:1000;animation:fadeIn 0.3s ease}
     .modal.active{display:flex;align-items:center;justify-content:center}
-    .modal-content{background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
+    .modal-content{background:#fff;border-radius:24px;padding:32px;max-width:560px;width:90%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.3);animation:scaleIn 0.3s cubic-bezier(0.4,0,0.2,1)}
     .modal-header{margin-bottom:20px}
-    .modal-title{font-size:20px;font-weight:700;color:#1f2937}
+    .modal-title{font-size:24px;font-weight:800;color:#1e293b;margin:0}
     .modal-body{margin-bottom:20px}
     .form-group{margin-bottom:16px}
-    .form-label{display:block;font-size:14px;font-weight:600;color:#374151;margin-bottom:6px}
-    .form-input{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px}
-    .form-textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;min-height:100px;resize:vertical}
+    .form-label{display:block;font-size:15px;font-weight:700;color:#1e293b;margin-bottom:8px}
+    .form-input,.form-textarea{width:100%;padding:14px 16px;border:2px solid #e2e8f0;border-radius:12px;font-size:15px;font-family:inherit;transition:all 0.3s ease;background:#f8fafc}
+    .form-input:hover,.form-textarea:hover{border-color:#cbd5e1}
+    .form-input:focus,.form-textarea:focus{outline:none;border-color:#3b82f6;background:#fff;box-shadow:0 0 0 4px rgba(59,130,246,0.1);transform:translateY(-2px)}
+    .form-textarea{min-height:120px;resize:vertical}
     .modal-footer{display:flex;gap:10px;justify-content:flex-end}
-    .modal-btn{padding:10px 16px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer}
-    .modal-btn-primary{background:#3b82f6;color:#fff}
-    .modal-btn-primary:hover{background:#2563eb}
-    .modal-btn-secondary{background:#6b7280;color:#fff}
-    .modal-btn-secondary:hover{background:#4b5563}
-    .modal-btn-danger{background:#ef4444;color:#fff}
-    .modal-btn-danger:hover{background:#dc2626}
+    .modal-btn{padding:14px 24px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.3s ease;position:relative;overflow:hidden}
+    .modal-btn-primary{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);color:#fff;box-shadow:0 4px 12px rgba(59,130,246,0.3)}
+    .modal-btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(59,130,246,0.4)}
+    .modal-btn-secondary{background:#e2e8f0;color:#475569;font-weight:600}
+    .modal-btn-secondary:hover{background:#cbd5e1;transform:translateY(-2px)}
+    .modal-btn-danger{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff;box-shadow:0 4px 12px rgba(239,68,68,0.3)}
+    .modal-btn-danger:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(239,68,68,0.4)}
     
-    /* Enhanced Table */
-    .table{width:100%;border-collapse:collapse}
-    .table th{background:#f9fafb;font-weight:600;color:#374151;text-align:left;padding:12px;border-bottom:2px solid #e5e7eb}
-    .table td{padding:12px;border-bottom:1px solid #f3f4f6}
-    .table tr:hover{background:#f9fafb}
-    .complaint-row{cursor:pointer;position:relative}
+    /* Modern Card-Based Table */
+    .table{width:100%;border-collapse:separate;border-spacing:0 12px}
+    .table th{background:transparent;font-weight:700;color:#64748b;text-align:left;padding:0 16px 16px;border:none;font-size:13px;text-transform:uppercase;letter-spacing:0.5px}
+    .table td{padding:20px 16px;border:none;background:#fff;color:#1e293b;font-weight:500}
+    .table tr{transition:all 0.3s ease}
+    .table tbody tr{background:#fff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer}
+    .table tbody tr:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,0.12)}
+    .table tbody tr td:first-child{border-radius:16px 0 0 16px}
+    .table tbody tr td:last-child{border-radius:0 16px 16px 0}
+    .complaint-row{position:relative}
     .complaint-row:hover .action-buttons{opacity:1}
-    .action-buttons{opacity:0;transition:opacity 0.2s ease}
+    .action-buttons{opacity:0;transition:opacity 0.3s ease}
     
-    /* Toast */
-    .toast{position:fixed;top:20px;right:20px;background:#1f2937;color:#fff;padding:12px 16px;border-radius:8px;z-index:2000;animation:slideIn 0.3s ease}
-    .toast.success{background:#10b981}
-    .toast.error{background:#ef4444}
-    @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+    /* Enhanced Toast */
+    .toast{position:fixed;top:24px;right:24px;background:#1e293b;color:#fff;padding:16px 24px;border-radius:14px;z-index:2000;animation:slideInRight 0.4s cubic-bezier(0.4,0,0.2,1);box-shadow:0 12px 32px rgba(0,0,0,0.3);font-weight:600;display:flex;align-items:center;gap:12px;backdrop-filter:blur(10px)}
+    .toast::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}
+    .toast.success{background:linear-gradient(135deg,#10b981 0%,#059669 100%);box-shadow:0 12px 32px rgba(16,185,129,0.4)}
+    .toast.error{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);box-shadow:0 12px 32px rgba(239,68,68,0.4)}
+    .toast.info{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);box-shadow:0 12px 32px rgba(59,130,246,0.4)}
+    @keyframes slideInRight{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
+    
+    /* Empty State */
+    .empty-state{text-align:center;padding:80px 20px}
+    .empty-icon{font-size:80px;margin-bottom:24px;opacity:0.5}
+    .empty-title{font-size:24px;font-weight:800;color:#1e293b;margin-bottom:12px}
+    .empty-text{color:#64748b;font-size:16px;max-width:400px;margin:0 auto 32px}
+    .empty-action{display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);color:#fff;border-radius:12px;text-decoration:none;font-weight:700;transition:all 0.3s ease;box-shadow:0 4px 12px rgba(59,130,246,0.3)}
+    .empty-action:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(59,130,246,0.4)}
+    
+    /* Loading State */
+    .loading-state{display:flex;justify-content:center;align-items:center;padding:60px 20px;flex-direction:column;gap:16px}
+    .loading-spinner{width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-text{color:#64748b;font-weight:600}
+    
+    /* Status Badge Enhanced */
+    .badge{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase}
+    .badge-success{background:linear-gradient(135deg,#d1fae5 0%,#a7f3d0 100%);color:#065f46;border:1.5px solid #86efac}
+    .badge-info{background:linear-gradient(135deg,#dbeafe 0%,#bfdbfe 100%);color:#1e40af;border:1.5px solid #93c5fd}
+    .badge-neutral{background:linear-gradient(135deg,#f1f5f9 0%,#e2e8f0 100%);color:#475569;border:1.5px solid #cbd5e1}
+    .badge-warning{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);color:#92400e;border:1.5px solid #fcd34d}
+    
+    /* Responsive */
+    @media(max-width:768px){
+      .track-title{font-size:32px}
+      .search-row{flex-direction:column}
+      .table{font-size:14px}
+      .table th,.table td{padding:12px 10px}
+      .action-buttons{opacity:1}
+    }
     
     /* Dark Mode */
-    [data-theme="dark"] body{background:var(--bg) !important}
+    [data-theme="dark"] body{background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%) !important}
     [data-theme="dark"] .track-title{color:var(--text) !important}
+    [data-theme="dark"] .track-subtitle{color:#94a3b8}
     [data-theme="dark"] .track-card{background:var(--surface);border-color:var(--border)}
     [data-theme="dark"] .search-row input{background:#0b141e;border-color:var(--border);color:var(--text)}
     [data-theme="dark"] .modal-content{background:var(--surface)}
     [data-theme="dark"] .modal-title{color:var(--text)}
     [data-theme="dark"] .form-label{color:var(--text)}
     [data-theme="dark"] .form-input,[data-theme="dark"] .form-textarea{background:#0b141e;border-color:var(--border);color:var(--text)}
-    [data-theme="dark"] .table th{background:#0f1b29;color:var(--text);border-bottom-color:var(--border)}
-    [data-theme="dark"] .table td{border-bottom-color:var(--border);color:var(--text)}
-    [data-theme="dark"] .table tr:hover{background:#0f1b29}
-    [data-theme="dark"] .progress-label{color:var(--text)}
+    [data-theme="dark"] .table th{background:#0f1b29;color:#94a3b8;border-bottom-color:var(--border)}
+    [data-theme="dark"] .table td{border-bottom-color:var(--border);color:var(--text) !important;background:rgba(15,27,41,0.5)}
+    [data-theme="dark"] .table tbody tr{background:rgba(15,27,41,0.5)}
+    [data-theme="dark"] .table tbody tr:hover{background:rgba(15,27,41,0.8)}
+    [data-theme="dark"] .progress-container{background:rgba(15,27,41,0.5)}
+    [data-theme="dark"] .progress-label{color:var(--text) !important}
+    [data-theme="dark"] .empty-title{color:var(--text)}
   </style>
 </head>
-<body class="dashboard" style="background:#f7fbff">
-  <header class="nav">
+<body class="dashboard">
+  <header class="nav animate-slideInDown">
     <div class="container nav-inner">
       <div class="brand">
         <span class="logo">✴</span>
@@ -103,17 +161,19 @@
       </nav>
       <div class="actions">
         <a class="btn btn-primary" href="/complaint.html">Log a Complaint</a>
+        <button class="btn btn-ghost" id="btn-logout" style="display:none">Logout</button>
       </div>
     </div>
   </header>
 
   <div class="track-wrap">
-    <h1 class="track-title">Track Your Complaint</h1>
-    <div class="dash-card">
-      <div class="search-row" style="margin-bottom:12px">
-        <input id="track-input" placeholder="Enter Complaint ID (e.g., CV-2025-003 or 3)" />
-        <button id="track-btn">Search</button>
-        <button id="reset-btn" class="btn-soft" style="width:auto">Reset</button>
+    <h1 class="track-title animate-fadeInUp">Track Your Complaints</h1>
+    <p class="track-subtitle animate-fadeInUp delay-100">Search and manage your civic complaints with ease</p>
+    <div class="track-card scroll-reveal delay-200">
+      <div class="search-row">
+        <input id="track-input" placeholder="🔍 Enter Complaint ID (e.g., CV-2025-003 or 3)" />
+        <button id="track-btn" class="hover-lift">🔍 Search</button>
+        <button id="reset-btn" class="modal-btn-secondary" style="width:auto;padding:16px 24px">🔄 Reset</button>
       </div>
       <p class="muted" id="table-desc">Overview of your submitted civic complaints. Click on a row for details.</p>
       <div class="table-wrap">
@@ -244,8 +304,8 @@
             </td>
             <td class="right">
               <div class="action-buttons">
-                <button class="action-btn edit-btn" onclick="editComplaint(${c.id})">Edit</button>
-                <button class="action-btn delete-btn" onclick="deleteComplaint(${c.id})">Delete</button>
+                <button class="action-btn edit-btn" onclick="editComplaint(event, ${c.id})">✏️ Edit</button>
+                <button class="action-btn delete-btn" onclick="deleteComplaint(event, ${c.id})">🗑️ Delete</button>
               </div>
             </td>
           </tr>
@@ -304,8 +364,9 @@
     let currentEditId = null;
     let currentDeleteId = null;
 
-    function editComplaint(id) {
+    function editComplaint(event, id) {
       event.stopPropagation();
+      event.preventDefault();
       currentEditId = id;
       const complaint = myList.find(c => c.id === id);
       if (complaint) {
@@ -314,14 +375,26 @@
         document.getElementById('edit-description').value = complaint.description || '';
         document.getElementById('edit-location').value = complaint.location || '';
         document.getElementById('edit-modal').classList.add('active');
+        console.log('Edit modal opened for complaint:', id);
+      } else {
+        console.error('Complaint not found:', id);
+        showToast('Complaint not found', 'error');
       }
     }
 
-    function deleteComplaint(id) {
+    function deleteComplaint(event, id) {
       event.stopPropagation();
+      event.preventDefault();
       currentDeleteId = id;
-      document.getElementById('delete-complaint-id').textContent = displayId(id);
-      document.getElementById('delete-modal').classList.add('active');
+      const complaint = myList.find(c => c.id === id);
+      if (complaint) {
+        document.getElementById('delete-complaint-id').textContent = displayId(id);
+        document.getElementById('delete-modal').classList.add('active');
+        console.log('Delete modal opened for complaint:', id);
+      } else {
+        console.error('Complaint not found:', id);
+        showToast('Complaint not found', 'error');
+      }
     }
 
     function closeEditModal() {
@@ -335,20 +408,36 @@
     }
 
     async function saveComplaint() {
-      if (!currentEditId) return;
+      if (!currentEditId) {
+        console.error('No complaint selected for editing');
+        return;
+      }
       
       const token = localStorage.getItem('cv_token');
       if (!token) {
-        showToast('Please login to edit complaints', 'error');
+        showToast('❌ Please login to edit complaints', 'error');
         return;
       }
 
       const updatedData = {
-        title: document.getElementById('edit-title').value,
+        title: document.getElementById('edit-title').value.trim(),
         category: document.getElementById('edit-category').value,
-        description: document.getElementById('edit-description').value,
-        location: document.getElementById('edit-location').value
+        description: document.getElementById('edit-description').value.trim(),
+        location: document.getElementById('edit-location').value.trim()
       };
+
+      // Validate
+      if (!updatedData.title) {
+        showToast('❌ Title is required', 'error');
+        return;
+      }
+
+      if (!updatedData.description) {
+        showToast('❌ Description is required', 'error');
+        return;
+      }
+
+      console.log('Updating complaint:', currentEditId, updatedData);
 
       try {
         const res = await fetch(`/api/complaints/${currentEditId}`, {
@@ -360,26 +449,43 @@
           body: JSON.stringify(updatedData)
         });
 
+        const data = await res.json();
+        console.log('Update response:', data);
+
         if (res.ok) {
-          showToast('Complaint updated successfully', 'success');
+          showToast('✅ Complaint updated successfully!', 'success');
           closeEditModal();
-          loadMine(); // Reload the list
+          
+          // Update the complaint in the list
+          const index = myList.findIndex(c => c.id === currentEditId);
+          if (index !== -1) {
+            myList[index] = { ...myList[index], ...updatedData };
+          }
+          
+          renderTable(myList); // Re-render immediately
+          setTimeout(() => loadMine(), 500); // Reload from server
         } else {
-          showToast('Failed to update complaint', 'error');
+          showToast(`❌ ${data.error || 'Failed to update complaint'}`, 'error');
         }
       } catch (error) {
-        showToast('Error updating complaint', 'error');
+        console.error('Error updating complaint:', error);
+        showToast('❌ Network error. Please try again.', 'error');
       }
     }
 
     async function confirmDelete() {
-      if (!currentDeleteId) return;
+      if (!currentDeleteId) {
+        console.error('No complaint selected for deletion');
+        return;
+      }
       
       const token = localStorage.getItem('cv_token');
       if (!token) {
-        showToast('Please login to delete complaints', 'error');
+        showToast('❌ Please login to delete complaints', 'error');
         return;
       }
+
+      console.log('Deleting complaint:', currentDeleteId);
 
       try {
         const res = await fetch(`/api/complaints/${currentDeleteId}`, {
@@ -389,15 +495,24 @@
           }
         });
 
+        const data = await res.json();
+        console.log('Delete response:', data);
+
         if (res.ok) {
-          showToast('Complaint deleted successfully', 'success');
+          showToast('✅ Complaint deleted successfully!', 'success');
           closeDeleteModal();
-          loadMine(); // Reload the list
+          
+          // Remove from local list immediately
+          myList = myList.filter(c => c.id !== currentDeleteId);
+          renderTable(myList); // Re-render immediately
+          
+          setTimeout(() => loadMine(), 500); // Reload from server
         } else {
-          showToast('Failed to delete complaint', 'error');
+          showToast(`❌ ${data.error || 'Failed to delete complaint'}`, 'error');
         }
       } catch (error) {
-        showToast('Error deleting complaint', 'error');
+        console.error('Error deleting complaint:', error);
+        showToast('❌ Network error. Please try again.', 'error');
       }
     }
 
@@ -420,6 +535,18 @@
         currentDeleteId = null;
       }
     });
+
+    // Logout functionality
+    const btnLogout = document.getElementById('btn-logout');
+    const token = localStorage.getItem('cv_token');
+    if (token && btnLogout) {
+      btnLogout.style.display = 'inline-block';
+      btnLogout.addEventListener('click', () => {
+        localStorage.removeItem('cv_token');
+        alert('Logged out successfully');
+        window.location.href = '/';
+      });
+    }
 
     loadMine();
   </script>

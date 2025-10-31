@@ -5,13 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CityVoice</title>
   <link rel="stylesheet" href="/index.css" />
+  <link rel="stylesheet" href="/animations.css" />
   <script src="/darkmode.js"></script>
+  <script src="/scroll-animations.js" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <header class="nav">
+  <header class="nav animate-slideInDown">
     <div class="container nav-inner">
       <div class="brand">
         <span class="logo">✴</span>
@@ -19,6 +21,7 @@
       </div>
       <nav class="menu">
         <a class="menu-link active" href="#home">Home</a>
+        <a class="menu-link" href="/map.html">Public Map</a>
         <a class="menu-link" href="#about">About</a>
         <a class="menu-link" href="#contact">Contact</a>
       </nav>
@@ -51,12 +54,12 @@
   </header>
 
   <main>
-    <section id="home" class="hero">
+    <section id="home" class="hero" data-parallax="0.5">
       <div class="overlay"></div>
       <div class="container hero-content">
-        <h1>Your Voice, Your City, Your Impact.</h1>
-        <p>CityVoice empowers citizens to report and track civic complaints, driving transparency and accountability in local governance. Make a difference today.</p>
-        <button id="btn-hero-complaint" class="btn btn-primary">Log a Complaint</button>
+        <h1 class="animate-fadeInUp">Your Voice, Your City, Your Impact.</h1>
+        <p class="animate-fadeInUp delay-200">CityVoice empowers citizens to report and track civic complaints, driving transparency and accountability in local governance. Make a difference today.</p>
+        <button id="btn-hero-complaint" class="btn btn-primary animate-fadeInUp delay-400 hover-lift btn-pulse">Log a Complaint</button>
       </div>
     </section>
 
@@ -64,21 +67,21 @@
 
     <!-- How it works -->
     <section class="container section-gap">
-      <h2 class="section-title">How CityVoice Works</h2>
-      <p class="section-subtitle">Discover the simple process of making your voice heard and contributing to community improvement.</p>
-      <div class="features">
-        <div class="feature-card">
-          <div class="feature-icon">📝</div>
+      <h2 class="section-title scroll-reveal">How CityVoice Works</h2>
+      <p class="section-subtitle scroll-reveal delay-100">Discover the simple process of making your voice heard and contributing to community improvement.</p>
+      <div class="features" data-stagger>
+        <div class="feature-card scroll-reveal hover-lift transition-all">
+          <div class="feature-icon animate-float">📝</div>
           <h3>Log Your Complaint</h3>
           <p>Easily submit detailed reports about civic issues, including location and descriptions, through our intuitive form.</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔎</div>
+        <div class="feature-card scroll-reveal hover-lift transition-all">
+          <div class="feature-icon animate-float">🔎</div>
           <h3>Track Progress</h3>
           <p>Stay informed with updates on your complaint's status from submission to resolution, ensuring transparency.</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">✅</div>
+        <div class="feature-card scroll-reveal hover-lift transition-all">
+          <div class="feature-icon animate-float">✅</div>
           <h3>See Results</h3>
           <p>Witness positive changes in your community as reported issues are addressed and resolved by local authorities.</p>
         </div>
@@ -86,23 +89,23 @@
     </section>
 
     <section class="container grid two-col section-gap" id="about">
-      <div>
+      <div class="scroll-reveal-left">
         <h2>About</h2>
         <p>CityVoice is a simple, transparent way to report civic issues such as potholes, broken streetlights, sanitation, and more. Track statuses and help your city respond faster.</p>
       </div>
-      <div class="card">
+      <div class="card scroll-reveal-right hover-lift transition-all">
         <h3>Recent Complaints</h3>
         <div id="complaints-list" class="complaints"></div>
-        <div style="margin-top:10px;text-align:right"><a class="menu-link" href="/track.html">Track a Complaint →</a></div>
+        <div style="margin-top:10px;text-align:right"><a class="menu-link transition-colors" href="/track.html">Track a Complaint →</a></div>
       </div>
     </section>
 
-    <section class="container section-gap" id="contact">
+    <section class="container section-gap scroll-reveal" id="contact">
       <h2>Contact</h2>
-      <p>Questions or feedback? Reach us at <a href="mailto:support@cityvoice.local">support@cityvoice.local</a>.</p>
+      <p>Questions or feedback? Reach us at <a href="mailto:support@cityvoice.local" class="transition-colors">support@cityvoice.local</a>.</p>
     </section>
     
-    <section class="container section-gap" id="community">
+    <section class="container section-gap scroll-reveal" id="community">
       <h2>Community</h2>
       <p>Join the CityVoice community to discuss issues, share updates, and collaborate with neighbors.</p>
     </section>
@@ -289,7 +292,7 @@
         const svgElements = btnUser.querySelectorAll('svg, line');
         svgElements.forEach(el => el.style.pointerEvents = 'none');
       }
-      if (dropLogout){ dropLogout.addEventListener('click', () => { storage.clear(); updateAuthUI(); toast('Logged out'); closeDropdown(); }); }
+      if (dropLogout){ dropLogout.addEventListener('click', () => { storage.clear(); updateAuthUI(); toast('Logged out'); closeDropdown(); window.location.href = '/'; }); }
       document.addEventListener('click', (e) => { if (!e.target.closest?.('.menu-user')) closeDropdown(); });
       const dropLogin = document.getElementById('drop-login');
       if (dropLogin){ dropLogin.addEventListener('click', () => { window.location.href = '/auth.html'; }); }

@@ -8,6 +8,18 @@ const { v2: cloudinary } = require('cloudinary');
 const compression = require('compression');
 const helmet = require('helmet');
 
+// JWT Authentication (for admin users only)
+const Auth = require('./auth/auth');
+const { requireAuth, requireAdmin } = require('./auth/middleware');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiting for admin login
+const adminAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts
+  message: { error: 'Too many login attempts, please try again later' }
+});
+
 // Import database functions
 const db = require('./database/db');
 
@@ -198,6 +210,67 @@ app.post('/api/auth/verify', async (req, res) => {
   }
 });
 
+// ==================== JWT ADMIN AUTH (NEW) ====================
+// Admin registration (JWT-based)
+app.post('/api/admin/register', adminAuthLimiter, async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+    
+    // Create admin user with JWT
+    const result = await Auth.register(email, password, name, 'admin');
+    
+    if (result.success) {
+      res.status(201).json({
+        user: result.user,
+        token: result.token
+      });
+    } else {
+      res.status(400).json({ error: result.error });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin login (JWT-based)
+app.post('/api/admin/login', adminAuthLimiter, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+    
+    // Login with JWT
+    const result = await Auth.login(email, password);
+    
+    if (result.success) {
+      // Check if user is admin
+      if (result.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+      
+      res.json({
+        user: result.user,
+        token: result.token
+      });
+    } else {
+      res.status(401).json({ error: result.error });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get current admin user
+app.get('/api/admin/me', requireAdmin, (req, res) => {
+  res.json(req.user);
+});
+
 // Middleware to verify Firebase ID token from Authorization: Bearer <token>
 function requireFirebaseAuth(req, res, next) {
   if (!firebaseEnabled) return res.status(401).json({ error: 'firebase not configured' });
@@ -225,22 +298,27 @@ app.get('/api/users/me', async (req, res) => {
 // Complaint routes - Using Firestore Database
 app.post('/api/complaints', maybeUpload, async (req, res) => {
   try {
-    // Get user from Firebase token
+    // Get user from Firebase token or simple auth
     const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     let userId = null;
     let userEmail = null;
     
+    // Try Firebase authentication first
     if (bearer && firebaseEnabled) {
       try {
         const decoded = await admin.auth().verifyIdToken(bearer);
         userId = decoded.uid;
         userEmail = decoded.email;
       } catch (e) {
-        return res.status(401).json({ error: 'Invalid authentication token' });
+        // Firebase auth failed, will try simple auth below
+        console.log('Firebase auth failed, trying simple auth...');
       }
-    } else {
+    }
+    
+    // If Firebase auth didn't work, try simple auth
+    if (!userId && !userEmail) {
       const user = getUserFromToken(req);
-      if (!user) return res.status(401).json({ error: 'unauthorized' });
+      if (!user) return res.status(401).json({ error: 'unauthorized - please login' });
       userEmail = user.email;
     }
     
@@ -252,34 +330,53 @@ app.post('/api/complaints', maybeUpload, async (req, res) => {
     let { lat, lng } = req.body || {};
     const evidenceUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
-    // Create complaint in Firestore
-    const complaintData = {
-      userId: userId || userEmail,
-      title,
-      description,
-      category: category || 'general',
-      location: {
-        address: location || 'Not specified',
-        lat: lat ? Number(lat) : null,
-        lng: lng ? Number(lng) : null
-      },
-      evidence: evidenceUrl
-    };
-    
-    const complaint = await db.createComplaint(complaintData);
-    
-    // Create notification for user
-    if (userId) {
-      await db.createNotification({
-        userId,
-        type: 'complaint_update',
-        title: 'Complaint Submitted',
-        message: `Your complaint "${title}" has been submitted successfully.`,
-        link: `/track.html?id=${complaint.complaintId}`
-      });
+    // Create complaint - use Firestore if Firebase is enabled, otherwise use in-memory
+    if (firebaseEnabled && userId) {
+      // Firebase/Firestore path
+      const complaintData = {
+        userId: userId || userEmail,
+        title,
+        description,
+        category: category || 'general',
+        location: {
+          address: location || 'Not specified',
+          lat: lat ? Number(lat) : null,
+          lng: lng ? Number(lng) : null
+        },
+        evidence: evidenceUrl
+      };
+      
+      const complaint = await db.createComplaint(complaintData);
+      
+      // Create notification for user
+      if (userId) {
+        await db.createNotification({
+          userId,
+          type: 'complaint_update',
+          title: 'Complaint Submitted',
+          message: `Your complaint "${title}" has been submitted successfully.`,
+          link: `/track.html?id=${complaint.complaintId}`
+        });
+      }
+      
+      res.status(201).json(complaint);
+    } else {
+      // Simple in-memory storage (for development)
+      const complaint = {
+        id: complaintId++,
+        title,
+        description,
+        location: location || 'Not specified',
+        category: category || 'general',
+        status: 'submitted',
+        userEmail: userEmail,
+        createdAt: new Date().toISOString(),
+        coords: (lat && lng) ? { lat: Number(lat), lng: Number(lng) } : null,
+        evidenceUrl,
+      };
+      complaints.push(complaint);
+      res.status(201).json(complaint);
     }
-    
-    res.status(201).json(complaint);
   } catch (error) {
     console.error('Error creating complaint:', error);
     res.status(500).json({ error: error.message });
@@ -292,22 +389,36 @@ app.get('/api/complaints', async (req, res) => {
     
     if (mine) {
       const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      let userId = null;
+      let userEmail = null;
+      
+      // Try Firebase auth
       if (bearer && firebaseEnabled) {
         try {
           const decoded = await admin.auth().verifyIdToken(bearer);
+          userId = decoded.uid;
           const userComplaints = await db.getComplaintsByUser(decoded.uid);
           return res.json(userComplaints);
         } catch (e) {
-          return res.status(401).json({ error: 'Invalid token' });
+          // Firebase failed, try simple auth
+          console.log('Firebase auth failed, trying simple auth...');
         }
       }
-      return res.status(401).json({ error: 'unauthorized' });
+      
+      // Try simple auth
+      if (!userId) {
+        const user = getUserFromToken(req);
+        if (!user) return res.status(401).json({ error: 'unauthorized' });
+        userEmail = user.email;
+        
+        // Return in-memory complaints for this user
+        const userComplaints = complaints.filter(c => c.userEmail === userEmail);
+        return res.json(userComplaints);
+      }
     }
     
-    // Return all complaints (for admin or public view)
-    // Note: In production, you may want to implement pagination
-    const allComplaints = []; // Implement getAllComplaints if needed
-    res.json(allComplaints);
+    // Return all complaints (in-memory for development)
+    res.json(complaints);
   } catch (error) {
     console.error('Error fetching complaints:', error);
     res.status(500).json({ error: error.message });
@@ -332,35 +443,70 @@ app.get('/api/complaints/:id', async (req, res) => {
 
 app.put('/api/complaints/:id', async (req, res) => {
   try {
-    const complaintId = req.params.id;
+    const complaintId = parseInt(req.params.id);
     const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    let userId = null;
+    let userEmail = null;
     
-    if (!bearer || !firebaseEnabled) {
-      return res.status(401).json({ error: 'unauthorized' });
+    // Try Firebase auth
+    if (bearer && firebaseEnabled) {
+      try {
+        const decoded = await admin.auth().verifyIdToken(bearer);
+        userId = decoded.uid;
+        userEmail = decoded.email;
+        
+        const { status, title, category, description, location } = req.body || {};
+        
+        // Verify complaint belongs to user
+        const complaint = await db.getComplaintById(complaintId);
+        if (!complaint) {
+          return res.status(404).json({ error: 'Complaint not found' });
+        }
+        
+        if (complaint.userId !== decoded.uid) {
+          return res.status(403).json({ error: 'Forbidden: Not your complaint' });
+        }
+        
+        // Update complaint with new status or details
+        if (status) {
+          const message = `Status updated to ${status}`;
+          const updated = await db.updateComplaintStatus(complaintId, status, message);
+          return res.json(updated);
+        }
+        
+        res.json({ message: 'Update functionality to be implemented' });
+      } catch (e) {
+        console.log('Firebase auth failed, trying simple auth...');
+      }
     }
     
-    const decoded = await admin.auth().verifyIdToken(bearer);
-    const { status, title, category, description, location } = req.body || {};
-    
-    // Verify complaint belongs to user (implement ownership check in db.js if needed)
-    const complaint = await db.getComplaintById(complaintId);
-    if (!complaint) {
-      return res.status(404).json({ error: 'Complaint not found' });
+    // Try simple auth (in-memory)
+    if (!userId) {
+      const user = getUserFromToken(req);
+      if (!user) return res.status(401).json({ error: 'unauthorized' });
+      userEmail = user.email;
+      
+      // Find complaint in in-memory store
+      const complaint = complaints.find(c => c.id === complaintId);
+      if (!complaint) {
+        return res.status(404).json({ error: 'Complaint not found' });
+      }
+      
+      // Check ownership
+      if (complaint.userEmail !== userEmail) {
+        return res.status(403).json({ error: 'Not your complaint' });
+      }
+      
+      // Update complaint
+      const { status, title, category, description, location } = req.body || {};
+      if (title) complaint.title = title;
+      if (category) complaint.category = category;
+      if (description) complaint.description = description;
+      if (location) complaint.location = location;
+      if (status) complaint.status = status;
+      
+      return res.json(complaint);
     }
-    
-    if (complaint.userId !== decoded.uid) {
-      return res.status(403).json({ error: 'Forbidden: Not your complaint' });
-    }
-    
-    // Update complaint with new status or details
-    if (status) {
-      const message = `Status updated to ${status}`;
-      const updated = await db.updateComplaintStatus(complaintId, status, message);
-      return res.json(updated);
-    }
-    
-    // For other updates, you'd need to implement updateComplaint in db.js
-    res.json({ message: 'Update functionality to be implemented' });
   } catch (error) {
     console.error('Error updating complaint:', error);
     res.status(500).json({ error: error.message });
@@ -369,27 +515,55 @@ app.put('/api/complaints/:id', async (req, res) => {
 
 app.delete('/api/complaints/:id', async (req, res) => {
   try {
-    const complaintId = req.params.id;
+    const complaintId = parseInt(req.params.id);
     const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    let userId = null;
+    let userEmail = null;
     
-    if (!bearer || !firebaseEnabled) {
-      return res.status(401).json({ error: 'unauthorized' });
+    // Try Firebase auth
+    if (bearer && firebaseEnabled) {
+      try {
+        const decoded = await admin.auth().verifyIdToken(bearer);
+        userId = decoded.uid;
+        
+        // Verify complaint belongs to user
+        const complaint = await db.getComplaintById(complaintId);
+        if (!complaint) {
+          return res.status(404).json({ error: 'Complaint not found' });
+        }
+        
+        if (complaint.userId !== decoded.uid) {
+          return res.status(403).json({ error: 'Forbidden: Not your complaint' });
+        }
+        
+        await db.deleteComplaint(complaintId);
+        return res.json({ message: 'Complaint deleted successfully' });
+      } catch (e) {
+        console.log('Firebase auth failed, trying simple auth...');
+      }
     }
     
-    const decoded = await admin.auth().verifyIdToken(bearer);
-    
-    // Verify complaint belongs to user
-    const complaint = await db.getComplaintById(complaintId);
-    if (!complaint) {
-      return res.status(404).json({ error: 'Complaint not found' });
+    // Try simple auth (in-memory)
+    if (!userId) {
+      const user = getUserFromToken(req);
+      if (!user) return res.status(401).json({ error: 'unauthorized' });
+      userEmail = user.email;
+      
+      // Find complaint in in-memory store
+      const index = complaints.findIndex(c => c.id === complaintId);
+      if (index === -1) {
+        return res.status(404).json({ error: 'Complaint not found' });
+      }
+      
+      // Check ownership
+      if (complaints[index].userEmail !== userEmail) {
+        return res.status(403).json({ error: 'Not your complaint' });
+      }
+      
+      // Delete complaint
+      complaints.splice(index, 1);
+      return res.json({ message: 'Complaint deleted successfully' });
     }
-    
-    if (complaint.userId !== decoded.uid) {
-      return res.status(403).json({ error: 'Forbidden: Not your complaint' });
-    }
-    
-    await db.deleteComplaint(complaintId);
-    res.json({ message: 'Complaint deleted successfully' });
   } catch (error) {
     console.error('Error deleting complaint:', error);
     res.status(500).json({ error: error.message });
@@ -670,46 +844,13 @@ app.post('/api/analytics', async (req, res) => {
   }
 });
 
-// ==================== ADMIN API ====================
-
-// Middleware to check if user is admin
-async function requireAdmin(req, res, next) {
-  try {
-    const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    if (!bearer || !firebaseEnabled) {
-      return res.status(401).json({ error: 'unauthorized' });
-    }
-    
-    const decoded = await admin.auth().verifyIdToken(bearer);
-    const user = await db.getUserById(decoded.uid);
-    
-    // Check if user has admin role
-    if (!user || user.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    req.adminUser = decoded;
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid authentication' });
-  }
-}
+// ==================== ADMIN API (JWT-based) ====================
+// Note: requireAdmin middleware is imported from ./auth/middleware.js
 
 // Get all complaints (admin only)
 app.get('/api/admin/complaints', requireAdmin, async (req, res) => {
   try {
-    // For now, we'll get all complaints
-    // In production, implement pagination and filtering in db.js
-    const adminDb = admin.firestore();
-    const snapshot = await adminDb.collection('complaints')
-      .orderBy('createdAt', 'desc')
-      .get();
-    
-    const complaints = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    
+    // Return all in-memory complaints
     res.json(complaints);
   } catch (error) {
     console.error('Error fetching all complaints:', error);
@@ -718,10 +859,16 @@ app.get('/api/admin/complaints', requireAdmin, async (req, res) => {
 });
 
 // Delete complaint (admin only)
-app.delete('/api/admin/complaints/:id', requireAdmin, async (req, res) => {
+app.delete('/api/admin/complaints/:id', requireAdmin, (req, res) => {
   try {
-    const complaintId = req.params.id;
-    await db.deleteComplaint(complaintId);
+    const complaintId = parseInt(req.params.id);
+    const index = complaints.findIndex(c => c.id === complaintId);
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+    
+    complaints.splice(index, 1);
     res.json({ message: 'Complaint deleted successfully' });
   } catch (error) {
     console.error('Error deleting complaint:', error);
@@ -730,19 +877,11 @@ app.delete('/api/admin/complaints/:id', requireAdmin, async (req, res) => {
 });
 
 // Get all users (admin only)
-app.get('/api/admin/users', requireAdmin, async (req, res) => {
+app.get('/api/admin/users', requireAdmin, (req, res) => {
   try {
-    const adminDb = admin.firestore();
-    const snapshot = await adminDb.collection('users')
-      .orderBy('createdAt', 'desc')
-      .get();
-    
-    const users = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    
-    res.json(users);
+    const UserDB = require('./auth/database');
+    const allUsers = UserDB.getAll();
+    res.json(allUsers);
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: error.message });
@@ -750,16 +889,17 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
 });
 
 // Update user role (admin only)
-app.put('/api/admin/users/:uid/role', requireAdmin, async (req, res) => {
+app.put('/api/admin/users/:id/role', requireAdmin, (req, res) => {
   try {
-    const { uid } = req.params;
+    const { id } = req.params;
     const { role } = req.body;
     
     if (!['user', 'admin', 'moderator'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
     
-    const updatedUser = await db.updateUser(uid, { role });
+    const UserDB = require('./auth/database');
+    const updatedUser = UserDB.update(parseInt(id), { role });
     res.json(updatedUser);
   } catch (error) {
     console.error('Error updating user role:', error);
@@ -768,14 +908,8 @@ app.put('/api/admin/users/:uid/role', requireAdmin, async (req, res) => {
 });
 
 // Get dashboard statistics (admin only)
-app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+app.get('/api/admin/stats', requireAdmin, (req, res) => {
   try {
-    const adminDb = admin.firestore();
-    
-    // Get complaint statistics
-    const complaintsSnapshot = await adminDb.collection('complaints').get();
-    const complaints = complaintsSnapshot.docs.map(doc => doc.data());
-    
     const stats = {
       totalComplaints: complaints.length,
       submitted: complaints.filter(c => c.status === 'submitted').length,
@@ -783,7 +917,7 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
       underReview: complaints.filter(c => c.status === 'under-review').length,
       resolved: complaints.filter(c => c.status === 'resolved').length,
       byCategory: {},
-      recentComplaints: complaints.slice(0, 10)
+      recentComplaints: complaints.slice(-10).reverse()
     };
     
     // Count by category

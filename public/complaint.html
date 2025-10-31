@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CityVoice • Lodge a Complaint</title>
   <link rel="stylesheet" href="/index.css" />
+  <link rel="stylesheet" href="/animations.css" />
+  <script src="/scroll-animations.js" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
@@ -19,18 +21,26 @@
   <style>
     .page{max-width:900px;margin:24px auto;padding:0 16px}
     .page-title{font-size:36px;font-weight:800;text-align:center;margin:10px 0 20px}
-    .panel{background:#fff;border:1px solid #e6eef5;border-radius:16px;padding:16px;color:#0b2237;position:relative}
-    .panel h3{margin:0 0 10px;font-size:22px}
-    .panel + .panel{margin-top:18px}
+    .panel{background:#fff;border:1px solid #e6eef5;border-radius:16px;padding:20px;color:#0b2237;position:relative;transition:all 0.3s ease;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+    .panel:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.1)}
+    .panel h3{margin:0 0 12px;font-size:22px;color:#0a74b8}
+    .panel + .panel{margin-top:20px}
     .map{border-radius:14px;overflow:hidden;border:1px solid #dbe6f1;margin-bottom:12px}
     .map img{width:100%;display:block}
     .row{display:flex;gap:10px}
     .row > *{flex:1}
-    .btn-soft{width:100%;background:#f2f6fb;border:1px solid #d9e5f0;border-radius:10px;padding:12px;cursor:pointer;font-weight:700;color:#0b2237;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn-soft{width:100%;background:#f2f6fb;border:1px solid #d9e5f0;border-radius:10px;padding:12px;cursor:pointer;font-weight:700;color:#0b2237;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.3s ease}
+    .btn-soft:hover{background:#e1eef7;transform:translateY(-2px);box-shadow:0 4px 12px rgba(10,116,184,0.15)}
     .field{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-    .field input,.field select,.field textarea{background:#fff;border:1px solid #d8e5f0;border-radius:10px;padding:10px}
+    .field{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+    .field label{font-weight:600;color:#0b2237;transition:color 0.2s ease}
+    .field input,.field select,.field textarea{background:#fff;border:1px solid #d8e5f0;border-radius:10px;padding:12px;transition:all 0.3s ease;font-family:inherit}
+    .field input:hover,.field select:hover,.field textarea:hover{border-color:#60a5fa}
+    .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#0a74b8;box-shadow:0 0 0 3px rgba(10,116,184,0.1);transform:translateY(-2px)}
     .submit{margin:22px 0}
-    .submit button{width:100%;background:#0a74b8;color:#fff;border:1px solid #0a74b8;border-radius:10px;padding:14px;font-weight:800;cursor:pointer}
+    .submit button{width:100%;background:#0a74b8;color:#fff;border:1px solid #0a74b8;border-radius:10px;padding:14px;font-weight:800;cursor:pointer;transition:all 0.3s ease;position:relative;overflow:hidden}
+    .submit button:hover{background:#0862a0;transform:translateY(-2px);box-shadow:0 6px 20px rgba(10,116,184,0.3)}
+    .submit button:active{transform:translateY(0)}
     .muted{color:#5b6b7a}
     /* Dark mode overrides */
     [data-theme="dark"] body{background:var(--bg) !important}
@@ -49,7 +59,7 @@
   </style>
 </head>
 <body style="background:#f7fbff">
-  <header class="nav">
+  <header class="nav animate-slideInDown">
     <div class="container nav-inner">
       <div class="brand">
         <span class="logo">✴</span>
@@ -73,10 +83,10 @@
   </header>
 
   <div class="page">
-    <h1 class="page-title" style="color:#000">Lodge a New Complaint</h1>
+    <h1 class="page-title animate-fadeInUp" style="color:#000">Lodge a New Complaint</h1>
 
     <form id="complaint-form">
-      <div class="panel">
+      <div class="panel scroll-reveal delay-100">
         <h3>1. Location Details</h3>
         <button id="btn-geoloc" type="button" class="btn-soft">📍 Use My Current Location</button>
         <div id="map-preview" class="loading"></div>
@@ -183,7 +193,11 @@
     const authBtn = document.getElementById('btn-auth');
     function updateAuthUI(){ authBtn.innerHTML = storage.token ? '<span>⎋</span><span>Logout</span>' : '<span>⎆</span><span>Login / Sign Up</span>'; }
     authBtn.addEventListener('click', () => {
-      if (storage.token){ storage.clear(); updateAuthUI(); }
+      if (storage.token){ 
+        storage.clear(); 
+        alert('Logged out successfully');
+        window.location.href = '/'; 
+      }
       else { window.location.href = '/auth.html'; }
     });
     updateAuthUI();

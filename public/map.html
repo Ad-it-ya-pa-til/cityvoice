@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CityVoice • Public Complaint Map</title>
+  <link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="/darkmode.js"></script>
+  <script src="/scroll-animations.js" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body{background:linear-gradient(135deg,#0a1628 0%,#1b263b 100%);min-height:100vh;margin:0;overflow-x:hidden}
+    
+    /* Hero Section */
+    .map-hero{background:linear-gradient(135deg,rgba(6,214,160,0.1) 0%,rgba(255,107,107,0.1) 100%);padding:80px 20px 40px;text-align:center;position:relative;overflow:hidden}
+    .map-hero::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(6,214,160,0.1) 0%,transparent 70%);animation:rotate 30s linear infinite}
+    @keyframes rotate{to{transform:rotate(360deg)}}
+    .map-hero h1{font-size:48px;font-weight:900;color:#f8f9fa;margin:0 0 16px;text-shadow:0 4px 20px rgba(0,0,0,0.3)}
+    .map-hero p{font-size:20px;color:#cbd5e0;max-width:600px;margin:0 auto;line-height:1.6}
+    
+    /* Stats Bar */
+    .stats-bar{background:rgba(27,38,59,0.7);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:24px;margin:-40px auto 40px;max-width:1200px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;box-shadow:0 8px 32px rgba(0,0,0,0.37)}
+    .stat-item{text-align:center}
+    .stat-number{font-size:36px;font-weight:900;background:linear-gradient(135deg,#06d6a0,#05b082);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:block;margin-bottom:8px}
+    .stat-label{color:#8892a6;font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+    
+    /* Map Container */
+    .map-container{max-width:1400px;margin:0 auto 60px;padding:0 20px}
+    .map-wrapper{background:rgba(27,38,59,0.5);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,0.35);position:relative}
+    
+    /* Filters */
+    .map-filters{padding:24px;background:rgba(10,22,40,0.8);border-bottom:1px solid rgba(255,255,255,0.1);display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .filter-btn{padding:10px 20px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#cbd5e0;font-weight:600;cursor:pointer;transition:all 0.3s ease;font-size:14px}
+    .filter-btn:hover{background:rgba(6,214,160,0.2);border-color:#06d6a0;color:#06d6a0;transform:translateY(-2px)}
+    .filter-btn.active{background:linear-gradient(135deg,#06d6a0,#05b082);color:#0a1628;border-color:transparent;box-shadow:0 4px 12px rgba(6,214,160,0.4)}
+    .filter-search{flex:1;min-width:250px;padding:12px 20px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#f8f9fa;font-size:14px;font-family:inherit;transition:all 0.3s ease}
+    .filter-search:focus{outline:none;background:rgba(255,255,255,0.08);border-color:#06d6a0;box-shadow:0 0 0 3px rgba(6,214,160,0.1)}
+    .filter-search::placeholder{color:#8892a6}
+    
+    /* Map */
+    #map{height:600px;width:100%;position:relative;z-index:1}
+    
+    /* Custom Markers */
+    .custom-marker{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 12px rgba(0,0,0,0.3);border:3px solid #fff;animation:markerDrop 0.6s cubic-bezier(0.4,0,0.2,1);cursor:pointer;transition:all 0.3s ease}
+    .custom-marker:hover{transform:scale(1.2);box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+    @keyframes markerDrop{0%{transform:translateY(-100px) scale(0);opacity:0}60%{transform:translateY(10px) scale(1.1)}100%{transform:translateY(0) scale(1);opacity:1}}
+    .marker-garbage{background:linear-gradient(135deg,#ff6b6b,#ee4444)}
+    .marker-pothole{background:linear-gradient(135deg,#f59e0b,#d97706)}
+    .marker-streetlight{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
+    .marker-water{background:linear-gradient(135deg,#3b82f6,#2563eb)}
+    .marker-other{background:linear-gradient(135deg,#8b5cf6,#7c3aed)}
+    
+    /* Popup Card */
+    .leaflet-popup-content-wrapper{background:rgba(27,38,59,0.98);backdrop-filter:blur(20px);border-radius:16px;padding:0;border:1px solid rgba(255,255,255,0.1);box-shadow:0 12px 32px rgba(0,0,0,0.5)}
+    .leaflet-popup-content{margin:0;font-family:'Inter',sans-serif;width:320px!important}
+    .popup-card{padding:20px}
+    .popup-header{display:flex;justify-content:space-between;align-items:start;margin-bottom:16px}
+    .popup-category{background:linear-gradient(135deg,#06d6a0,#05b082);color:#0a1628;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px}
+    .popup-status{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;text-transform:uppercase}
+    .status-submitted{background:rgba(100,116,139,0.2);color:#94a3b8;border:1px solid rgba(100,116,139,0.3)}
+    .status-in-progress{background:rgba(59,130,246,0.2);color:#60a5fa;border:1px solid rgba(59,130,246,0.3)}
+    .status-resolved{background:rgba(16,185,129,0.2);color:#34d399;border:1px solid rgba(16,185,129,0.3)}
+    .popup-title{color:#f8f9fa;font-size:18px;font-weight:700;margin:0 0 12px;line-height:1.4}
+    .popup-desc{color:#cbd5e0;font-size:14px;line-height:1.6;margin-bottom:16px}
+    .popup-meta{display:flex;gap:16px;margin-bottom:16px;font-size:13px;color:#8892a6}
+    .popup-meta i{color:#06d6a0}
+    .popup-actions{display:flex;gap:8px}
+    .popup-btn{flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#f8f9fa;font-weight:600;cursor:pointer;transition:all 0.3s ease;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px}
+    .popup-btn:hover{background:rgba(6,214,160,0.2);border-color:#06d6a0;transform:translateY(-2px)}
+    .popup-btn-primary{background:linear-gradient(135deg,#06d6a0,#05b082);color:#0a1628;border:none}
+    .popup-btn-primary:hover{background:linear-gradient(135deg,#05b082,#048a68);transform:translateY(-2px);box-shadow:0 4px 12px rgba(6,214,160,0.4)}
+    .upvote-count{font-weight:800}
+    
+    /* Legend */
+    .map-legend{position:absolute;bottom:20px;right:20px;background:rgba(27,38,59,0.98);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;z-index:1000;box-shadow:0 8px 32px rgba(0,0,0,0.37);min-width:200px}
+    .legend-title{color:#f8f9fa;font-weight:700;margin-bottom:12px;font-size:14px}
+    .legend-item{display:flex;align-items:center;gap:12px;margin-bottom:10px;color:#cbd5e0;font-size:13px}
+    .legend-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid #fff;flex-shrink:0}
+    
+    /* Mobile Sidebar */
+    .mobile-sidebar{position:fixed;bottom:0;left:0;right:0;background:rgba(27,38,59,0.98);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,0.1);padding:20px;transform:translateY(100%);transition:transform 0.3s ease;z-index:2000;max-height:80vh;overflow-y:auto}
+    .mobile-sidebar.open{transform:translateY(0)}
+    
+    /* Responsive */
+    @media(max-width:768px){
+      .map-hero h1{font-size:32px}
+      .map-hero p{font-size:16px}
+      .stats-bar{margin:-20px 16px 20px;padding:16px}
+      .stat-number{font-size:28px}
+      #map{height:500px}
+      .map-filters{flex-direction:column;align-items:stretch}
+      .filter-search{min-width:100%}
+      .map-legend{bottom:auto;top:80px;right:10px;font-size:12px;padding:12px}
+    }
+    
+    /* Dark mode adjustments */
+    [data-theme="dark"] .popup-card{color:var(--text)}
+  </style>
+</head>
+<body>
+  <header class="nav animate-slideInDown">
+    <div class="container nav-inner">
+      <div class="brand">
+        <span class="logo">✴</span>
+        <a class="brand-name" href="/" style="color:#dff1ff;text-decoration:none">CityVoice</a>
+      </div>
+      <nav class="menu">
+        <a class="menu-link" href="/">Home</a>
+        <a class="menu-link" href="/map.html">Public Map</a>
+        <a class="menu-link" href="/track.html">Track</a>
+      </nav>
+      <div class="actions">
+        <a class="btn btn-primary hover-lift" href="/complaint.html">Log Complaint</a>
+        <div class="menu-user">
+          <button class="menu-btn" id="btn-user-menu" aria-label="User menu">☰</button>
+          <div class="dropdown" id="dropdown-user">
+            <a href="/" class="drop-item"><i class="fas fa-home"></i> Home</a>
+            <button class="drop-item" id="drop-darkmode"><i class="fas fa-moon"></i> Dark Mode</button>
+            <button class="drop-item" id="drop-logout"><i class="fas fa-sign-out-alt"></i> Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="map-hero">
+    <h1 class="animate-fadeInUp">🗺️ Public Complaint Map</h1>
+    <p class="animate-fadeInUp delay-100">Explore civic issues reported by your community. Vote, comment, and help prioritize what matters.</p>
+  </section>
+
+  <!-- Stats Bar -->
+  <div class="stats-bar animate-fadeInUp delay-200" data-stagger>
+    <div class="stat-item">
+      <span class="stat-number" data-counter="247">0</span>
+      <span class="stat-label">Total Reports</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number" data-counter="42">0</span>
+      <span class="stat-label">In Progress</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number" data-counter="189">0</span>
+      <span class="stat-label">Resolved</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number" data-counter="1243">0</span>
+      <span class="stat-label">Community Votes</span>
+    </div>
+  </div>
+
+  <!-- Map Container -->
+  <div class="map-container">
+    <div class="map-wrapper scroll-reveal">
+      <!-- Filters -->
+      <div class="map-filters">
+        <button class="filter-btn active" data-filter="all"><i class="fas fa-globe"></i> All</button>
+        <button class="filter-btn" data-filter="garbage"><i class="fas fa-trash"></i> Garbage</button>
+        <button class="filter-btn" data-filter="pothole"><i class="fas fa-road"></i> Potholes</button>
+        <button class="filter-btn" data-filter="streetlight"><i class="fas fa-lightbulb"></i> Streetlights</button>
+        <button class="filter-btn" data-filter="water"><i class="fas fa-tint"></i> Water</button>
+        <input type="text" class="filter-search" id="map-search" placeholder="🔍 Search by location or description...">
+      </div>
+      
+      <!-- Map -->
+      <div id="map"></div>
+      
+      <!-- Legend -->
+      <div class="map-legend">
+        <div class="legend-title">📍 Categories</div>
+        <div class="legend-item">
+          <div class="legend-icon marker-garbage">🗑️</div>
+          <span>Garbage</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-icon marker-pothole">🕳️</div>
+          <span>Potholes</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-icon marker-streetlight">💡</div>
+          <span>Streetlights</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-icon marker-water">💧</div>
+          <span>Water Issues</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-icon marker-other">📌</div>
+          <span>Other</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/map.js"></script>
+  <script>
+    // Logout functionality
+    const dropLogout = document.getElementById('drop-logout');
+    if (dropLogout) {
+      dropLogout.addEventListener('click', () => {
+        localStorage.removeItem('cv_token');
+        localStorage.removeItem('cv_upvotes');
+        alert('Logged out successfully');
+        window.location.href = '/';
+      });
+    }
+  </script>
+</body>
+</html>

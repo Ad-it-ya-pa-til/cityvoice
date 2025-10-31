@@ -22,10 +22,36 @@ const storage = {
 
 // Check authentication on page load
 function checkAuth() {
-  if (!storage.token) {
-    window.location.href = '/auth.html';
+  // Check for JWT admin token
+  const token = storage.token;
+  
+  if (!token) {
+    console.log('No admin token found, redirecting to admin login...');
+    window.location.href = '/admin-login.html';
     return false;
   }
+  
+  // Verify token with backend
+  fetch('/api/admin/me', {
+    headers: { 'x-auth-token': token }
+  })
+  .then(res => {
+    if (!res.ok) {
+      throw new Error('Invalid token');
+    }
+    return res.json();
+  })
+  .then(user => {
+    console.log('Admin authenticated:', user.email);
+    // Store user info for UI
+    window.adminUser = user;
+  })
+  .catch(err => {
+    console.error('Auth failed:', err);
+    storage.clear();
+    window.location.href = '/admin-login.html';
+  });
+  
   return true;
 }
 
@@ -139,6 +165,11 @@ function switchPage(pageName) {
   // Load data for specific pages
   if (pageName === 'complaints') {
     renderTable();
+  } else if (pageName === 'analytics') {
+    // Initialize analytics dashboard
+    if (typeof initializeAnalytics === 'function') {
+      initializeAnalytics();
+    }
   }
 }
 
