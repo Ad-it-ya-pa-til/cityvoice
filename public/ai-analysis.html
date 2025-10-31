@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Complaint Analysis • CityVoice</title>
+  <link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/ai-analysis.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header -->
+  <header class="nav animate-slideInDown">
+    <div class="container nav-inner">
+      <div class="brand">
+        <span class="logo">✴</span>
+        <a class="brand-name" href="/" style="color:#dff1ff;text-decoration:none">CityVoice</a>
+      </div>
+      <nav class="menu">
+        <a class="menu-link" href="/">Home</a>
+        <a class="menu-link" href="/complaint.html">Submit Complaint</a>
+        <a class="menu-link" href="/track.html">Track</a>
+      </nav>
+      <div class="actions">
+        <a class="btn btn-primary hover-lift" href="/complaint.html">Log Complaint</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="ai-container">
+    <div class="ai-hero">
+      <div class="ai-hero-icon">✨</div>
+      <h1 class="ai-hero-title">AI-Powered Complaint Analysis</h1>
+      <p class="ai-hero-subtitle">Let artificial intelligence help you categorize and summarize your complaint</p>
+    </div>
+
+    <!-- API Key Section -->
+    <section class="api-key-section">
+      <div class="api-key-card">
+        <div class="api-key-header">
+          <span class="api-key-icon">🔑</span>
+          <h2>API Key Required</h2>
+        </div>
+        <p class="api-key-info">
+          To get your free API key, visit 
+          <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer">
+            Google AI Studio
+          </a>
+        </p>
+        <div class="input-group">
+          <label for="apiKeyInput" class="input-label">Enter Your Google AI Studio API Key</label>
+          <input 
+            type="password" 
+            id="apiKeyInput" 
+            class="input-field"
+            placeholder="AIza.............................."
+            autocomplete="off"
+          />
+          <button type="button" id="toggleKeyVisibility" class="toggle-visibility" aria-label="Toggle API key visibility">
+            👁️
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Complaint Form Section -->
+    <section class="complaint-form-section">
+      <div class="form-card">
+        <div class="form-header">
+          <h2>Your Complaint</h2>
+          <p>Describe your civic issue in detail</p>
+        </div>
+
+        <div class="textarea-wrapper">
+          <label for="complaintText" class="textarea-label">Complaint Description</label>
+          <textarea 
+            id="complaintText" 
+            class="complaint-textarea"
+            placeholder="E.g., The streetlight at the corner of Main Street and Oak Avenue has been broken for the past week, making the intersection dangerous at night. Several residents have complained about safety concerns..."
+            rows="8"
+          ></textarea>
+          <div class="char-count">
+            <span id="charCount">0</span> characters
+          </div>
+        </div>
+
+        <button type="button" id="analyzeButton" class="analyze-button">
+          <span class="button-icon">✨</span>
+          <span class="button-text">Analyze Complaint</span>
+          <span class="button-glow"></span>
+        </button>
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+      </div>
+    </section>
+
+    <!-- Loading Indicator -->
+    <div id="loader" class="loader-container" style="display: none;">
+      <div class="loader-spinner">
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+      </div>
+      <p class="loader-text">Analyzing your complaint with AI...</p>
+    </div>
+
+    <!-- Results Section -->
+    <section id="resultsSection" class="results-section" style="display: none;">
+      <div class="results-card">
+        <div class="results-header">
+          <span class="results-icon">🎯</span>
+          <h2>AI Analysis Results</h2>
+        </div>
+
+        <div class="results-grid">
+          <!-- Summary -->
+          <div class="result-item result-summary">
+            <div class="result-label">
+              <span class="result-emoji">📝</span>
+              Suggested Title / Summary
+            </div>
+            <div id="aiSummary" class="result-value"></div>
+          </div>
+
+          <!-- Category -->
+          <div class="result-item result-category">
+            <div class="result-label">
+              <span class="result-emoji">🏷️</span>
+              Suggested Category
+            </div>
+            <div id="aiCategory" class="result-value result-badge"></div>
+          </div>
+
+          <!-- Severity -->
+          <div class="result-item result-severity">
+            <div class="result-label">
+              <span class="result-emoji">⚡</span>
+              Suggested Severity
+            </div>
+            <div id="aiSeverity" class="result-value result-badge"></div>
+          </div>
+        </div>
+
+        <div class="results-actions">
+          <button type="button" id="useResultsButton" class="action-button primary">
+            <span>Use These Suggestions</span>
+            <span>→</span>
+          </button>
+          <button type="button" id="analyzeAgainButton" class="action-button secondary">
+            <span>Analyze Again</span>
+            <span>↻</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="ai-footer">
+    <p>Powered by Google Gemini AI • CityVoice</p>
+  </footer>
+
+  <script src="/ai-analysis.js"></script>
+</body>
+</html>
