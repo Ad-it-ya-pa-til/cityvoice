@@ -1,0 +1,44 @@
+<div id="chat-widget" class="hidden">
+    <div id="chat-header">
+        <div class="chat-header-content">
+            <div class="chat-avatar">🤖</div>
+            <div class="chat-header-text">
+                <strong>CityVoice Assistant</strong>
+                <span class="chat-status">Online</span>
+            </div>
+        </div>
+        <button id="close-chat" aria-label="Close chat" title="Close chat">✕</button>
+    </div>
+    <div id="chat-messages">
+        <div class="message bot">
+            <div class="message-avatar">🤖</div>
+            <div class="message-content">
+                Hi! 👋 I'm your CityVoice Assistant. How can I help you with the platform today?
+            </div>
+        </div>
+    </div>
+    <div id="chat-typing" class="hidden">
+        <div class="typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <span class="typing-text">Assistant is typing...</span>
+    </div>
+    <div id="chat-input-area">
+        <input type="text" id="chat-input" placeholder="Ask me anything about CityVoice..." aria-label="Type your message">
+        <button id="send-message" aria-label="Send message" title="Send message">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<button id="open-chat-button" aria-label="Open chat" title="Chat with CityVoice Assistant">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </svg>
+    <span class="chat-button-text">Chat</span>
+</button>
