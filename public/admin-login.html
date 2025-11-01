@@ -414,6 +414,21 @@
     <div class="back-link">
       <a href="/">← Back to CityVoice</a>
     </div>
+
+    <!-- Default Credentials Info -->
+    <div style="margin-top: 24px; padding: 16px; background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%); border: 2px solid #3b82f6; border-radius: 12px; font-size: 13px;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <span style="font-size: 20px;">ℹ️</span>
+        <strong style="color: #1e40af;">Default Test Credentials</strong>
+      </div>
+      <div style="color: #1e40af; line-height: 1.6;">
+        <div><strong>Email:</strong> admin@123</div>
+        <div><strong>Password:</strong> 123456</div>
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #93c5fd; font-size: 12px; opacity: 0.9;">
+          ⚠️ <em>Change these credentials in production!</em>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -499,5 +514,62 @@
       });
     }
   </script>
-</body>
+
+  <!-- CityVoice Helpdesk Chatbot Widget -->
+<!-- Copy this entire snippet and paste it just before the closing </body> tag -->
+
+<!-- Chat Bubble (Trigger) -->
+<div id="chatBubble" class="chat-bubble" aria-label="Open Helpdesk Chat">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+  </svg>
+</div>
+
+<!-- Chat Widget Container -->
+<div id="chatWidget" class="chat-widget">
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="chat-header-content">
+      <div class="chat-header-icon">💬</div>
+      <div class="chat-header-text">
+        <h3>CityVoice Helpdesk</h3>
+        <p>Ask me about using the website</p>
+      </div>
+    </div>
+    <button id="chatCloseBtn" class="chat-close-btn" aria-label="Close Chat">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Chat Window (Messages Display) -->
+  <div id="chatWindow" class="chat-window">
+    <!-- Messages will be dynamically inserted here -->
+  </div>
+
+  <!-- Chat Form (Input Area) -->
+  <form id="chatForm" class="chat-form">
+    <input 
+      type="text" 
+      id="messageInput" 
+      class="chat-input" 
+      placeholder="Type your question..." 
+      autocomplete="off"
+      required
+    />
+    <button type="submit" class="chat-send-btn" aria-label="Send Message">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </form>
+</div>
+
+<!-- Load the chatbot scripts -->
+<link rel="stylesheet" href="/chatbot.css">
+<script src="/chatbot.js"></script>
+  </body>
 </html>
